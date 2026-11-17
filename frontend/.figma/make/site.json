@@ -1,0 +1,10 @@
+{
+  "description": "Shop manga, collectible figures, apparel, and officially licensed anime merchandise in one immersive store, with product discovery, wishlists, and checkout.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

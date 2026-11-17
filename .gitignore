@@ -1,0 +1,7 @@
+# Do not commit secrets or dependency folders
+**/node_modules/
+**/dist/
+**/.env
+**/.env.*
+**/*.log
+.vscode/
