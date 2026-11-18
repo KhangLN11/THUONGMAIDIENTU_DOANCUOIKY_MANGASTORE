@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n, useTranslateDocument } from "./i18n";
+import type { Product } from "./types/product";
+import { USE_PRODUCTS_API } from "./config/products";
+import { localizeProduct } from "./adapters/productAdapter";
+import { ProductsProvider, useProducts, useProduct } from "./hooks/useProducts";
+import { ProductImage } from "./components/ProductImage";
+import { ProductState, ProductSkeletons } from "./components/ProductState";
 
 type Page = "home" | "shop" | "product" | "series" | "cart" | "checkout" | "account";
-type Product = {
-  id: number;
-  name: string;
-  series: string;
-  price: number;
-  category: string;
-  badge?: string;
-  image: string;
-};
 
 const images = {
   shelf:
@@ -24,7 +21,7 @@ const images = {
     "https://images.unsplash.com/photo-1666153184621-bc6445e3568d?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200",
 };
 
-const products: Product[] = [
+const demoProducts: Product[] = [
   {
     id: 1,
     name: "Nocturne / Vol. 01",
@@ -162,21 +159,23 @@ function Button({
   ghost = false,
   onClick,
   className = "",
+  disabled = false,
 }: {
   children: React.ReactNode;
   ghost?: boolean;
   onClick?: () => void;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
-    <button onClick={onClick} className={`ink-btn ${ghost ? "ink-btn-ghost" : ""} ${className}`}>
+    <button disabled={disabled || undefined} onClick={onClick} className={`ink-btn ${ghost ? "ink-btn-ghost" : ""} ${className}`}>
       <span>{children}</span>
       <Icon name="arrow" size={17} />
     </button>
   );
 }
 
-function Header({ go, cartCount }: { go: (p: Page) => void; cartCount: number }) {
+function Header({ go, cartCount }: { go: (p: Page, id?: number) => void; cartCount: number }) {
   const [open, setOpen] = useState(false);
   const { language, setLanguage, t } = useI18n();
   const links: [string, Page][] = [
@@ -268,11 +267,12 @@ function ProductCard({
   wish: boolean;
   onWish: () => void;
 }) {
-  const { t, formatCurrency } = useI18n();
+  const { t, formatCurrency: currency } = useI18n();
+  const formatCurrency = (value: number) => currency(value, product.source === "api" ? "VND" : "USD");
   return (
-    <article className="product-card">
+    <article className="product-card" data-source={product.source}>
       <div className="product-img" onClick={onOpen}>
-        <img src={product.image} alt={product.name} />
+        <ProductImage src={product.image} alt={product.name} />
         {product.badge && <span className="badge">{product.badge}</span>}
         <button
           className={`wish ${wish ? "active" : ""}`}
@@ -294,6 +294,7 @@ function ProductCard({
             {t("QUICK VIEW")}
           </button>
           <button
+            disabled={product.source === "api" && product.stockQuantity === 0 ? true : undefined}
             onClick={(e) => {
               e.stopPropagation();
               onAdd();
@@ -304,11 +305,11 @@ function ProductCard({
         </div>
       </div>
       <div className="product-meta">
-        <p>{product.series}</p>
-        <h3>{product.name}</h3>
-        <div>
-          <span>{formatCurrency(product.price)}</span>
-          <small>★★★★★</small>
+        <p data-product-text={product.source ? "true" : undefined} style={product.source ? { minHeight: "2.4em" } : undefined}>{product.source === "api" ? [product.category, product.series].filter(Boolean).join(" / ") : product.series}</p>
+        <h3 data-product-text={product.source ? "true" : undefined} style={product.source ? { minHeight: "2.4em", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>{product.name}</h3>
+        <div style={product.source ? { flexWrap: "wrap", gap: 8 } : undefined}>
+          <span>{formatCurrency(product.price)}{product.originalPrice !== undefined && <del style={{ marginLeft: 8 }}>{formatCurrency(product.originalPrice)}</del>}</span>
+          <small style={product.source ? { display: "inline-block" } : undefined}>{product.source === "api" ? `${t(product.stockQuantity ? "IN STOCK" : "OUT OF STOCK")} (${product.stockQuantity})` : "★★★★★"}</small>
         </div>
       </div>
     </article>
@@ -362,11 +363,12 @@ function Home({
   wishes,
   toggleWish,
 }: {
-  go: (p: Page) => void;
+  go: (p: Page, id?: number) => void;
   add: (p: Product) => void;
   wishes: number[];
   toggleWish: (id: number) => void;
 }) {
+  const { products, status, retry } = useProducts();
   return (
     <>
       <main>
@@ -484,11 +486,13 @@ function Home({
             <i>ARRIVALS</i>
           </SectionTitle>
           <div className="product-grid">
-            {products.slice(0, 4).map((p) => (
+            {USE_PRODUCTS_API && status !== "success" && <ProductState status={status} retry={retry} />}
+            {USE_PRODUCTS_API && status === "success" && products.length === 0 && <ProductState status="empty" />}
+            {(status === "success" ? products : []).slice(0, 4).map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
-                onOpen={() => go("product")}
+                onOpen={() => go("product", p.id)}
                 onAdd={() => add(p)}
                 wish={wishes.includes(p.id)}
                 onWish={() => toggleWish(p.id)}
@@ -531,11 +535,13 @@ function Home({
             <i>ICON LIST</i>
           </SectionTitle>
           <div className="product-grid">
-            {products.slice(4).map((p) => (
+            {USE_PRODUCTS_API && status !== "success" && <ProductState status={status} retry={retry} />}
+            {USE_PRODUCTS_API && status === "success" && products.length === 0 && <ProductState status="empty" />}
+            {(status === "success" ? products : []).slice(4).map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
-                onOpen={() => go("product")}
+                onOpen={() => go("product", p.id)}
                 onAdd={() => add(p)}
                 wish={wishes.includes(p.id)}
                 onWish={() => toggleWish(p.id)}
@@ -597,19 +603,25 @@ function Shop({
   wishes,
   toggleWish,
 }: {
-  go: (p: Page) => void;
+  go: (p: Page, id?: number) => void;
   add: (p: Product) => void;
   wishes: number[];
   toggleWish: (id: number) => void;
 }) {
-  const { t, formatCurrency } = useI18n();
+  const { products, status, retry } = useProducts();
+  const { t, formatCurrency: currency } = useI18n();
+  const formatCurrency = (value: number) => currency(value, USE_PRODUCTS_API ? "VND" : "USD");
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const filtered = products.filter(
     (p) =>
-      (category === "All" || p.category === category) &&
+      (category === "All" || (USE_PRODUCTS_API ? p.categoryKey : p.category) === category) &&
       p.name.toLowerCase().includes(query.toLowerCase()),
   );
+  const categories = USE_PRODUCTS_API
+    ? ["All", ...Array.from(new Set(products.map(p => p.categoryKey ?? "uncategorized")))]
+    : ["All", "Manga", "Figures", "Posters", "Apparel", "Accessories"];
+  const priceMax = USE_PRODUCTS_API ? Math.max(1, ...products.map(p => p.originalPrice ?? p.price)) : 150;
   return (
     <main className="inner-page">
       <div className="page-hero">
@@ -631,7 +643,7 @@ function Shop({
         <span>
           {filtered.length.toLocaleString()} {t("OBJECTS")}
         </span>
-        <select aria-label="Sort products">
+        <select aria-label="Sort products" disabled={USE_PRODUCTS_API || undefined}>
           <option>SORT: FEATURED</option>
           <option>PRICE: LOW TO HIGH</option>
           <option>NEWEST FIRST</option>
@@ -640,38 +652,41 @@ function Shop({
       <div className="shop-layout">
         <aside>
           <h3>FILTER / 絞り込み</h3>
-          {["All", "Manga", "Figures", "Posters", "Apparel", "Accessories"].map((c) => (
+          {categories.map((c) => (
             <button
               className={category === c ? "active" : ""}
               onClick={() => setCategory(c)}
               key={c}
             >
-              {c}
-              <span>{c === "All" ? 8 : products.filter((p) => p.category === c).length}</span>
+              {USE_PRODUCTS_API && c !== "All" ? products.find(p => p.categoryKey === c)?.category || t("Uncategorized") : c}
+              <span>{c === "All" ? products.length : products.filter((p) => (USE_PRODUCTS_API ? p.categoryKey : p.category) === c).length}</span>
             </button>
           ))}
           <hr />
           <h3>PRICE RANGE</h3>
-          <input type="range" min="0" max="150" />
+          <input type="range" min="0" max={priceMax} disabled={USE_PRODUCTS_API || undefined} />
           <div className="range-label">
             <span>{formatCurrency(0)}</span>
-            <span>{formatCurrency(150)}+</span>
+            <span>{formatCurrency(priceMax)}+</span>
           </div>
         </aside>
         <div>
           <div className="product-grid shop-grid">
-            {filtered.map((p) => (
+            {status === "loading" && <><span role="status" style={{ gridColumn: "1 / -1" }}>{t("Loading products…")}</span><ProductSkeletons /></>}
+            {status === "error" && <ProductState status="error" retry={retry} />}
+            {USE_PRODUCTS_API && status === "success" && filtered.length === 0 && <ProductState status="empty" />}
+            {status === "success" && filtered.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
-                onOpen={() => go("product")}
+                onOpen={() => go("product", p.id)}
                 onAdd={() => add(p)}
                 wish={wishes.includes(p.id)}
                 onWish={() => toggleWish(p.id)}
               />
             ))}
           </div>
-          <div className="pagination">
+          <div className="pagination" hidden={USE_PRODUCTS_API || undefined} style={USE_PRODUCTS_API ? { display: "none" } : undefined}>
             <button>←</button>
             <button className="active">01</button>
             <button>02</button>
@@ -684,47 +699,52 @@ function Shop({
   );
 }
 
-function ProductPage({ add, go }: { add: (p: Product) => void; go: (p: Page) => void }) {
-  const { t, formatCurrency } = useI18n();
-  const p = products[1];
+function ApiProductPage({ id, add, go }: { id: number | null; add: (p: Product) => void; go: (p: Page, id?: number) => void }) {
+  const { product, status, retry, notFound } = useProduct(id);
+  if (status !== "success" || !product) return <main className="inner-page product-page"><ProductState status={status === "success" ? "error" : status} retry={retry} notFound={notFound} /></main>;
+  return <ProductPage key={product.id} product={product} add={add} go={go} />;
+}
+
+function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: Page, id?: number) => void; product?: Product }) {
+  const { products } = useProducts();
+  const { t, formatCurrency: currency } = useI18n();
+  const formatCurrency = (value: number) => currency(value, product?.source === "api" ? "VND" : "USD");
+  const p = product ?? products[1];
   const [qty, setQty] = useState(1);
-  const [main, setMain] = useState(images.cards);
+  const [main, setMain] = useState(product?.image ?? images.cards);
   return (
-    <main className="inner-page product-page">
+    <main className="inner-page product-page" data-product-id={product?.id}>
       <div className="crumbs">
-        HOME / FIGURES / BLADE//ZERO / <b>THE RONIN</b>
+        {product ? <span data-product-text="true">{p.category} / <b>{p.name}</b></span> : <>HOME / FIGURES / BLADE//ZERO / <b>THE RONIN</b></>}
       </div>
       <div className="product-detail">
         <div className="gallery">
           <div className="thumbs">
-            {[images.cards, images.comic, images.open].map((im, i) => (
+            {(product ? [p.image] : [images.cards, images.comic, images.open]).map((im, i) => (
               <button className={main === im ? "active" : ""} onClick={() => setMain(im)} key={im}>
-                <img src={im} alt={`View ${i + 1}`} />
+                <ProductImage src={im} alt={`View ${i + 1}`} />
               </button>
             ))}
           </div>
           <div className="main-image">
-            <img src={main} alt={p.name} />
-            <span>LIMITED / 250</span>
+            <ProductImage src={main} alt={p.name} />
+            {!product && <span>LIMITED / 250</span>}
           </div>
         </div>
         <div className="product-info">
-          <span>PREMIUM SCALE FIGURE / 01:08</span>
-          <h1>
-            THE RONIN
-            <br />
-            <i>FIGURE</i>
+          <span data-product-text={product ? "true" : undefined}>{product ? [p.category, p.series].filter(Boolean).join(" / ") : "PREMIUM SCALE FIGURE / 01:08"}</span>
+          <h1 data-product-text={product ? "true" : undefined} style={product ? { overflowWrap: "anywhere" } : undefined}>
+            {product ? p.name : <>THE RONIN<br /><i>FIGURE</i></>}
           </h1>
-          <div className="rating">
+          <div className="rating" hidden={product ? true : undefined}>
             ★★★★★ <small>{t("4.9 / 38 REVIEWS")}</small>
           </div>
-          <h2>{formatCurrency(p.price)}</h2>
-          <p>
-            A museum-grade collectible forged from the world of Blade//Zero. Hand-finished detail,
-            interchangeable katana, and individually numbered base.
+          <h2>{formatCurrency(p.price)}{p.originalPrice !== undefined && <del style={{ marginLeft: 12, fontSize: "0.6em" }}>{formatCurrency(p.originalPrice)}</del>}</h2>
+          <p data-product-text={product ? "true" : undefined}>
+            {product ? p.description || t("No description available.") : "A museum-grade collectible forged from the world of Blade//Zero. Hand-finished detail, interchangeable katana, and individually numbered base."}
           </p>
           <div className="stock">
-            <i /> IN STOCK — SHIPS IN 2–3 DAYS
+            <i /> {product ? `${t(p.stockQuantity ? "IN STOCK" : "OUT OF STOCK")} (${p.stockQuantity})` : "IN STOCK — SHIPS IN 2–3 DAYS"}
           </div>
           <div className="purchase">
             <div className="qty">
@@ -732,11 +752,12 @@ function ProductPage({ add, go }: { add: (p: Product) => void; go: (p: Page) => 
                 <Icon name="minus" />
               </button>
               <b>{qty}</b>
-              <button onClick={() => setQty(qty + 1)}>
+              <button disabled={product && qty >= (p.stockQuantity ?? 0) ? true : undefined} onClick={() => setQty(qty + 1)}>
                 <Icon name="plus" />
               </button>
             </div>
             <Button
+              disabled={product && !p.stockQuantity ? true : undefined}
               onClick={() => {
                 for (let i = 0; i < qty; i++) add(p);
               }}
@@ -744,9 +765,10 @@ function ProductPage({ add, go }: { add: (p: Product) => void; go: (p: Page) => 
               {t("ADD TO CART")} — {formatCurrency(p.price * qty)}
             </Button>
           </div>
-          <button className="buy" onClick={() => go("checkout")}>
-            BUY IT NOW
+          <button className="buy" onClick={() => go(product ? "cart" : "checkout")}>
+            {product ? t("VIEW CART") : "BUY IT NOW"}
           </button>
+          {product && <p role="note">{t("Cart preview only. Ordering and payment are not available yet.")}</p>}
           <div className="accordions">
             <button>
               DETAILS & DIMENSIONS <Icon name="plus" />
@@ -767,11 +789,11 @@ function ProductPage({ add, go }: { add: (p: Product) => void; go: (p: Page) => 
           <i>DROPS</i>
         </SectionTitle>
         <div className="product-grid">
-          {products.slice(2, 6).map((x) => (
+          {(product ? products.filter(x => x.id !== p.id).slice(0, 4) : products.slice(2, 6)).map((x) => (
             <ProductCard
               key={x.id}
               product={x}
-              onOpen={() => {}}
+              onOpen={() => product ? go("product", x.id) : undefined}
               onAdd={() => add(x)}
               wish={false}
               onWish={() => {}}
@@ -783,7 +805,8 @@ function ProductPage({ add, go }: { add: (p: Product) => void; go: (p: Page) => 
   );
 }
 
-function Series({ go }: { go: (p: Page) => void }) {
+function Series({ go }: { go: (p: Page, id?: number) => void }) {
+  const { products, status, retry } = useProducts();
   return (
     <main className="series-page">
       <section className="series-hero">
@@ -836,11 +859,13 @@ function Series({ go }: { go: (p: Page) => void }) {
           <i>VOID</i>
         </SectionTitle>
         <div className="product-grid">
-          {products.slice(0, 4).map((p) => (
+            {USE_PRODUCTS_API && status !== "success" && <ProductState status={status} retry={retry} />}
+            {USE_PRODUCTS_API && status === "success" && products.length === 0 && <ProductState status="empty" />}
+          {(status === "success" ? products : []).slice(0, 4).map((p) => (
             <ProductCard
               key={p.id}
               product={p}
-              onOpen={() => go("product")}
+              onOpen={() => go("product", p.id)}
               onAdd={() => {}}
               wish={false}
               onWish={() => {}}
@@ -859,9 +884,10 @@ function Cart({
 }: {
   cart: Product[];
   setCart: (p: Product[]) => void;
-  go: (p: Page) => void;
+  go: (p: Page, id?: number) => void;
 }) {
-  const { formatCurrency } = useI18n();
+  const { t, formatCurrency: currency } = useI18n();
+  const formatCurrency = (value: number) => currency(value, USE_PRODUCTS_API ? "VND" : "USD");
   const grouped = useMemo(
     () =>
       cart.reduce<Record<number, { product: Product; qty: number }>>((a, p) => {
@@ -871,12 +897,14 @@ function Cart({
     [cart],
   );
   const total = cart.reduce((a, p) => a + p.price, 0);
-  const adjust = (p: Product, n: number) =>
-    n > 0
-      ? setCart([...cart, p])
-      : setCart(
-          cart.filter((x, i) => !(x.id === p.id && i === cart.findIndex((y) => y.id === p.id))),
-        );
+  const adjust = (p: Product, n: number) => {
+    if (n > 0) {
+      if (p.source === "api" && cart.filter(x => x.id === p.id).length >= (p.stockQuantity ?? 0)) return;
+      setCart([...cart, p]);
+    } else {
+      setCart(cart.filter((x, i) => !(x.id === p.id && i === cart.findIndex((y) => y.id === p.id))));
+    }
+  };
   return (
     <main className="inner-page cart-page">
       <div className="page-hero">
@@ -902,10 +930,10 @@ function Cart({
             </div>
             {Object.values(grouped).map(({ product: p, qty }) => (
               <div className="cart-row" key={p.id}>
-                <img src={p.image} alt="" />
+                <ProductImage src={p.image} alt="" />
                 <div>
-                  <small>{p.series}</small>
-                  <h3>{p.name}</h3>
+                  <small data-product-text={p.source ? "true" : undefined}>{p.series}</small>
+                  <h3 data-product-text={p.source ? "true" : undefined}>{p.name}</h3>
                   <p>{formatCurrency(p.price)}</p>
                   <button onClick={() => setCart(cart.filter((x) => x.id !== p.id))}>REMOVE</button>
                 </div>
@@ -941,7 +969,8 @@ function Cart({
               <p>TOTAL</p>
               <b>{formatCurrency(total)}</b>
             </div>
-            <Button onClick={() => go("checkout")}>PROCEED TO CHECKOUT</Button>
+            <Button disabled={USE_PRODUCTS_API} onClick={() => go("checkout")}>PROCEED TO CHECKOUT</Button>
+            {USE_PRODUCTS_API && <p role="note">{t("Cart preview only. Ordering and payment are not available yet.")}</p>}
             <small>SECURE CHECKOUT / AUTHENTICITY GUARANTEED</small>
           </aside>
         </div>
@@ -950,8 +979,9 @@ function Cart({
   );
 }
 
-function Checkout({ cart, go }: { cart: Product[]; go: (p: Page) => void }) {
-  const { t, formatCurrency } = useI18n();
+function Checkout({ cart, go }: { cart: Product[]; go: (p: Page, id?: number) => void }) {
+  const { t, formatCurrency: currency } = useI18n();
+  const formatCurrency = (value: number) => currency(value, USE_PRODUCTS_API ? "VND" : "USD");
   const total = cart.reduce((a, p) => a + p.price, 0);
   return (
     <main className="checkout">
@@ -1011,10 +1041,10 @@ function Checkout({ cart, go }: { cart: Product[]; go: (p: Page) => void }) {
         <span>ORDER / 注文</span>
         {cart.map((p, i) => (
           <div className="checkout-item" key={`${p.id}-${i}`}>
-            <img src={p.image} alt="" />
+            <ProductImage src={p.image} alt="" />
             <div>
-              <b>{p.name}</b>
-              <small>{p.series}</small>
+              <b data-product-text={p.source ? "true" : undefined}>{p.name}</b>
+              <small data-product-text={p.source ? "true" : undefined}>{p.series}</small>
             </div>
             <strong>{formatCurrency(p.price)}</strong>
           </div>
@@ -1029,7 +1059,7 @@ function Checkout({ cart, go }: { cart: Product[]; go: (p: Page) => void }) {
           <b>—</b>
         </div>
         <div className="checkout-total">
-          <p>TOTAL / USD</p>
+          <p>{USE_PRODUCTS_API ? "TOTAL / VND" : "TOTAL / USD"}</p>
           <b>{formatCurrency(total)}</b>
         </div>
       </aside>
@@ -1037,7 +1067,7 @@ function Checkout({ cart, go }: { cart: Product[]; go: (p: Page) => void }) {
   );
 }
 
-function Account({ go, wishes }: { go: (p: Page) => void; wishes: number[] }) {
+function Account({ go, wishes }: { go: (p: Page, id?: number) => void; wishes: number[] }) {
   const { t, formatCurrency, formatDate } = useI18n();
   return (
     <main className="inner-page account-page">
@@ -1107,7 +1137,7 @@ function Account({ go, wishes }: { go: (p: Page) => void; wishes: number[] }) {
   );
 }
 
-function Footer({ go }: { go: (p: Page) => void }) {
+function Footer({ go }: { go: (p: Page, id?: number) => void }) {
   const { t } = useI18n();
   return (
     <footer>
@@ -1167,18 +1197,33 @@ function Footer({ go }: { go: (p: Page) => void }) {
 }
 
 export default function App() {
+  return <ProductsProvider demoProducts={demoProducts}><StoreApp /></ProductsProvider>;
+}
+
+function StoreApp() {
   const { language, t } = useI18n();
   useTranslateDocument();
   const [page, setPage] = useState<Page>("home");
-  const [cart, setCart] = useState<Product[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [storedCart, setStoredCart] = useState<Product[]>([]);
+  const cart = useMemo(() => storedCart.map(p => localizeProduct(p, language)), [storedCart, language]);
+  const setCart = (items: Product[]) => setStoredCart(items.filter(p => USE_PRODUCTS_API ? p.source === "api" : p.source !== "api"));
   const [wishes, setWishes] = useState<number[]>([]);
   const [toast, setToast] = useState("");
-  const go = (p: Page) => {
+  const go = (p: Page, id?: number) => {
+    if (p === "product" && USE_PRODUCTS_API) {
+      if (id === undefined) { setPage("shop"); return; }
+      setSelectedId(id);
+    }
     setPage(p);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const add = (p: Product) => {
-    setCart((x) => [...x, p]);
+    if ((USE_PRODUCTS_API && p.source !== "api") || (!USE_PRODUCTS_API && p.source === "api")) return;
+    setStoredCart(x => {
+      if (p.source === "api" && x.filter(item => item.id === p.id).length >= (p.stockQuantity ?? 0)) return x;
+      return [...x, p];
+    });
     setToast(p.name);
     window.setTimeout(() => setToast(""), 2400);
   };
@@ -1195,7 +1240,7 @@ export default function App() {
       {page !== "checkout" && <Header go={go} cartCount={cart.length} />}
       {page === "home" && <Home go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "shop" && <Shop go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
-      {page === "product" && <ProductPage add={add} go={go} />}
+      {page === "product" && (USE_PRODUCTS_API ? <ApiProductPage id={selectedId} add={add} go={go} /> : <ProductPage add={add} go={go} />)}
       {page === "series" && <Series go={go} />}
       {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} />}
       {page === "checkout" && <Checkout cart={cart} go={go} />}

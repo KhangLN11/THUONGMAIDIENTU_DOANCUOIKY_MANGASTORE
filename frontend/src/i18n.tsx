@@ -3,6 +3,17 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 export type Language = "vi" | "en";
 
 const vi: Record<string, string> = {
+  "Loading products…": "Đang tải sản phẩm…",
+  "No products found.": "Không tìm thấy sản phẩm.",
+  "Product not found.": "Không tìm thấy sản phẩm.",
+  "Unable to load products.": "Không thể tải sản phẩm.",
+  "TRY AGAIN": "THỬ LẠI",
+  "IN STOCK": "CÒN HÀNG",
+  "OUT OF STOCK": "HẾT HÀNG",
+  "Uncategorized": "Chưa phân loại",
+  "No description available.": "Chưa có mô tả.",
+  "Cart preview only. Ordering and payment are not available yet.": "Giỏ hàng chỉ để xem trước. Chức năng đặt hàng và thanh toán chưa được triển khai.",
+
   HOME: "TRANG CHỦ",
   SHOP: "CỬA HÀNG",
   "MANGA SERIES": "BỘ TRUYỆN",
@@ -204,7 +215,7 @@ const vi: Record<string, string> = {
   "View 3": "Góc xem 3",
 };
 
-const en = {
+const en: Record<string, string> = {
   ...Object.fromEntries(Object.keys(vi).map((key) => [key, key])),
   "account.headingLead": "MY",
   "account.headingAccent": "UNIVERSE",
@@ -219,7 +230,7 @@ type I18nValue = {
   language: Language;
   setLanguage: (language: Language) => void;
   t: (key: string) => string;
-  formatCurrency: (value: number) => string;
+  formatCurrency: (value: number, currency?: "USD" | "VND") => string;
   formatDate: (value: Date | string) => string;
 };
 
@@ -249,10 +260,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       language,
       setLanguage,
       t: (key) => translations[language][key] ?? key,
-      formatCurrency: (value) =>
+      formatCurrency: (value, currency = "USD") =>
         new Intl.NumberFormat(locale, {
           style: "currency",
-          currency: "USD",
+          currency,
           currencyDisplay: language === "vi" ? "code" : "symbol",
         }).format(value),
       formatDate: (value) =>
@@ -281,6 +292,7 @@ const sourceText = new WeakMap<Text, string>();
 const sourceAttributes = new WeakMap<Element, Record<string, string>>();
 
 function localizeTextNode(node: Text, language: Language) {
+  if (node.parentElement?.closest("[data-product-text]")) return;
   if (!sourceText.has(node)) sourceText.set(node, node.nodeValue ?? "");
   let source = sourceText.get(node) ?? "";
   const current = node.nodeValue ?? "";
@@ -304,6 +316,7 @@ function localizeTextNode(node: Text, language: Language) {
 }
 
 function localizeElement(element: Element, language: Language) {
+  if (element.closest("[data-product-text]")) return;
   const names = ["placeholder", "aria-label", "title", "alt"];
   if (!sourceAttributes.has(element)) {
     const originals: Record<string, string> = {};

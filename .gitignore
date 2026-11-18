@@ -5,3 +5,8 @@
 **/.env.*
 **/*.log
 .vscode/
+
+# Local database credentials
+/backend/config/database.local.php
+
+!frontend/.env.example
