@@ -5,12 +5,13 @@ import { USE_PRODUCTS_API } from "./config/products";
 import { localizeProduct } from "./adapters/productAdapter";
 import { ProductsProvider, useProducts, useProduct } from "./hooks/useProducts";
 import { featuredManga } from "./config/featuredManga";
+import { useCommerce } from "./hooks/useCommerce";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AccountPanel } from "./components/AccountPanel";
 import { ProductImage } from "./components/ProductImage";
 import { ProductState, ProductSkeletons } from "./components/ProductState";
 
-type Page = "home" | "shop" | "product" | "series" | "cart" | "checkout" | "account";
+type Page = "wishlist" | "home" | "shop" | "product" | "series" | "cart" | "checkout" | "account";
 
 const images = {
   shelf:
@@ -241,7 +242,7 @@ function Header({ go, cartCount }: { go: (p: Page, id?: number) => void; cartCou
         <button aria-label={t("Account")} onClick={() => go("account")}>
           <Icon name="user" />
         </button>
-        <button aria-label={t("Wishlist")}>
+        <button aria-label={t("Wishlist")} onClick={() => go("wishlist")}>
           <Icon name="heart" />
         </button>
         <button aria-label={t("Cart")} className="cart-icon" onClick={() => go("cart")}>
@@ -589,24 +590,30 @@ function Home({
 function Shop({
   go,
   seriesSlug,
+  wishlistOnly = false,
+  commercePending = false,
   add,
   wishes,
   toggleWish,
 }: {
   go: (p: Page, id?: number) => void;
   seriesSlug: string | null;
+  wishlistOnly?: boolean;
+  commercePending?: boolean;
   add: (p: Product) => void;
   wishes: number[];
   toggleWish: (id: number) => void;
 }) {
-  const { products, status, retry } = useProducts();
+  const { products, status: productStatus, retry } = useProducts();
+  const status = wishlistOnly && commercePending ? "loading" : productStatus;
   const { t, formatCurrency: currency } = useI18n();
   const formatCurrency = (value: number) => currency(value, USE_PRODUCTS_API ? "VND" : "USD");
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
+  const scope = wishlistOnly ? products.filter(p => wishes.includes(p.id)) : products;
   const seriesProducts = seriesSlug
-    ? products.filter(p => p.source === "api" && p.api?.series?.slug === seriesSlug)
-    : products;
+    ? scope.filter(p => p.source === "api" && p.api?.series?.slug === seriesSlug)
+    : scope;
   const filtered = seriesProducts.filter(
     (p) =>
       (category === "All" || (USE_PRODUCTS_API ? p.categoryKey : p.category) === category) &&
@@ -621,7 +628,7 @@ function Shop({
       <div className="page-hero">
         <p>THE FULL ARCHIVE / 2025</p>
         <h1>
-          SHOP <i>ALL</i>
+          {wishlistOnly ? t("WISHLIST") : <>SHOP <i>ALL</i></>}
         </h1>
         <b>買物</b>
       </div>
@@ -893,8 +900,18 @@ function Cart({
   cart,
   setCart,
   go,
+  onQuantity,
+  serverSubtotal,
+  lineTotals,
+  busy,
+  pending,
 }: {
   cart: Product[];
+  onQuantity: (id: number, quantity: number) => void;
+  serverSubtotal?: number;
+  lineTotals?: Record<number, number>;
+  busy: boolean;
+  pending: boolean;
   setCart: (p: Product[]) => void;
   go: (p: Page, id?: number) => void;
 }) {
@@ -908,8 +925,13 @@ function Cart({
       }, {}),
     [cart],
   );
-  const total = cart.reduce((a, p) => a + p.price, 0);
+  const total = serverSubtotal ?? cart.reduce((a, p) => a + p.price, 0);
   const adjust = (p: Product, n: number) => {
+    if (USE_PRODUCTS_API) {
+      const quantity = cart.filter(x => x.id === p.id).length + n;
+      if (n > 0 && quantity > (p.stockQuantity ?? 0)) return;
+      onQuantity(p.id, Math.max(0, quantity)); return;
+    }
     if (n > 0) {
       if (p.source === "api" && cart.filter(x => x.id === p.id).length >= (p.stockQuantity ?? 0)) return;
       setCart([...cart, p]);
@@ -926,7 +948,7 @@ function Cart({
         </h1>
         <b>{cart.length.toString().padStart(2, "0")}</b>
       </div>
-      {cart.length === 0 ? (
+      {pending && cart.length === 0 ? <div className="empty"><p role="status">{t("commerce.loading")}</p></div> : cart.length === 0 ? (
         <div className="empty">
           <h2>YOUR PANEL IS EMPTY.</h2>
           <p>The next chapter is waiting.</p>
@@ -947,18 +969,18 @@ function Cart({
                   <small data-product-text={p.source ? "true" : undefined}>{p.series}</small>
                   <h3 data-product-text={p.source ? "true" : undefined}>{p.name}</h3>
                   <p>{formatCurrency(p.price)}</p>
-                  <button onClick={() => setCart(cart.filter((x) => x.id !== p.id))}>REMOVE</button>
+                  <button disabled={busy} onClick={() => USE_PRODUCTS_API ? onQuantity(p.id, 0) : setCart(cart.filter((x) => x.id !== p.id))}>REMOVE</button>
                 </div>
                 <div className="qty">
-                  <button onClick={() => adjust(p, -1)}>
+                  <button disabled={busy} onClick={() => adjust(p, -1)}>
                     <Icon name="minus" />
                   </button>
                   <b>{qty}</b>
-                  <button onClick={() => adjust(p, 1)}>
+                  <button disabled={busy || (p.source === "api" && qty >= (p.stockQuantity ?? 0))} onClick={() => adjust(p, 1)}>
                     <Icon name="plus" />
                   </button>
                 </div>
-                <strong>{formatCurrency(p.price * qty)}</strong>
+                <strong>{formatCurrency(lineTotals?.[p.id] ?? p.price * qty)}</strong>
               </div>
             ))}
           </div>
@@ -1080,7 +1102,7 @@ function Checkout({ cart, go }: { cart: Product[]; go: (p: Page, id?: number) =>
 }
 
 function Account({ go, wishes }: { go: (p: Page, id?: number) => void; wishes: number[] }) {
-  return <AccountPanel onShop={() => go("shop")} wishes={wishes} />;
+  return <AccountPanel onShop={() => go("shop")} onWishlist={() => go("wishlist")} wishes={wishes} />;
 }
 
 function Footer({ go }: { go: (p: Page, id?: number) => void }) {
@@ -1149,22 +1171,27 @@ export default function App() {
 function StoreApp() {
   const { language, t } = useI18n();
   useTranslateDocument();
-  const [page, setPage] = useState<Page>(() => window.location.hash === "#account" ? "account" : "home");
+  const [page, setPage] = useState<Page>(() => window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
   useEffect(() => {
-    const openAccount = () => { if (window.location.hash === "#account") setPage("account"); };
+    const openAccount = () => { const hash = window.location.hash; if (hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
     window.addEventListener("hashchange", openAccount);
     return () => window.removeEventListener("hashchange", openAccount);
   }, []);
   const [shopSeriesSlug, setShopSeriesSlug] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [storedCart, setStoredCart] = useState<Product[]>([]);
-  const cart = useMemo(() => storedCart.map(p => localizeProduct(p, language)), [storedCart, language]);
-  const setCart = (items: Product[]) => setStoredCart(items.filter(p => USE_PRODUCTS_API ? p.source === "api" : p.source !== "api"));
-  const [wishes, setWishes] = useState<number[]>([]);
+  const commerce = useCommerce();
+  const { cart, wishes, setCart, toggleWish } = commerce;
   const [toast, setToast] = useState("");
+  const toastOwner = useRef(commerce.accountKey);
+  const toastTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    setToast("");
+    if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current);
+    return () => { if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current); };
+  }, [commerce.accountKey]);
   const go = (p: Page, id?: number) => {
-    if (p === "account") window.history.replaceState(null, "", "#account");
-    else if (window.location.hash === "#account") window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (p === "account" || p === "wishlist" || p === "cart") window.history.replaceState(null, "", "#" + p);
+    else if (["#account", "#wishlist", "#cart"].includes(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     if (p === "shop") setShopSeriesSlug(null);
     if (p === "product" && USE_PRODUCTS_API) {
       if (id === undefined) { setPage("shop"); return; }
@@ -1179,16 +1206,14 @@ function StoreApp() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const add = (p: Product) => {
-    if ((USE_PRODUCTS_API && p.source !== "api") || (!USE_PRODUCTS_API && p.source === "api")) return;
-    setStoredCart(x => {
-      if (p.source === "api" && x.filter(item => item.id === p.id).length >= (p.stockQuantity ?? 0)) return x;
-      return [...x, p];
+    void commerce.add(p).then(added => {
+      if (!added) return;
+      toastOwner.current = commerce.accountKey;
+      setToast(p.name);
+      if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(""), 2400);
     });
-    setToast(p.name);
-    window.setTimeout(() => setToast(""), 2400);
   };
-  const toggleWish = (id: number) =>
-    setWishes((x) => (x.includes(id) ? x.filter((n) => n !== id) : [...x, id]));
   useEffect(() => {
     document.title =
       language === "vi"
@@ -1198,15 +1223,18 @@ function StoreApp() {
   return (
     <div className="app">
       {page !== "checkout" && <Header go={go} cartCount={cart.length} />}
+      {USE_PRODUCTS_API && commerce.loading && <p role="status">{t("commerce.loading")}</p>}
+      {USE_PRODUCTS_API && commerce.error && <div role="alert"><p>{t(`commerce.error.${commerce.error}`)}</p><button onClick={() => void commerce.retry()}>{t("TRY AGAIN")}</button></div>}
+      {page === "wishlist" && <Shop seriesSlug={null} wishlistOnly commercePending={commerce.loading} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "home" && <Home go={go} openSeries={openSeries} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "shop" && <Shop key={shopSeriesSlug ?? "all"} seriesSlug={shopSeriesSlug} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "product" && (USE_PRODUCTS_API ? <ApiProductPage id={selectedId} add={add} go={go} /> : <ProductPage add={add} go={go} />)}
       {page === "series" && <Series go={go} />}
-      {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} />}
+      {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} onQuantity={commerce.quantity} serverSubtotal={commerce.subtotal} lineTotals={commerce.lineTotals} busy={commerce.busy || commerce.loading} pending={commerce.loading || !!commerce.error} />}
       {page === "checkout" && <Checkout cart={cart} go={go} />}
       {page === "account" && <Account go={go} wishes={wishes} />}
       {page !== "checkout" && <Footer go={go} />}
-      {toast && (
+      {toast && toastOwner.current === commerce.accountKey && (
         <div className="toast">
           <span>✓</span>
           {toast} {t("ADDED TO CART")}

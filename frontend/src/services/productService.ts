@@ -33,7 +33,7 @@ function parseImage(value: unknown): ApiProductImage {
   };
 }
 
-function parseProduct(value: unknown): ApiProduct {
+export function parseProduct(value: unknown): ApiProduct {
   const p = object(value);
   if (p.images !== undefined && !Array.isArray(p.images)) throw new ProductApiError("INVALID_RESPONSE");
   const images = p.images === undefined ? [] : (p.images as unknown[]).map(parseImage);

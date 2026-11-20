@@ -55,3 +55,21 @@ export async function checkAdmin(): Promise<AuthUser> {
   if (!result || result.role !== "admin") throw new AuthError("FORBIDDEN", 403);
   return result;
 }
+
+/** Shared same-origin cookie/CSRF transport for account-owned APIs. */
+export async function sessionRequest(path: string, body?: unknown): Promise<unknown> {
+  if (body !== undefined && !csrfToken) await getSession();
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${base}/${path}`, { method: body === undefined ? "GET" : "POST", credentials: "same-origin", signal: controller.signal,
+      headers: body === undefined ? { Accept: "application/json" } : { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: body === undefined ? undefined : JSON.stringify(body) });
+    const value: unknown = await response.json();
+    if (!record(value)) throw new AuthError("INVALID_RESPONSE");
+    if (record(value.meta) && typeof value.meta.csrf_token === "string") csrfToken = value.meta.csrf_token;
+    if (!response.ok || value.success !== true) throw new AuthError(record(value.error) && typeof value.error.code === "string" ? value.error.code : "REQUEST_FAILED", response.status);
+    return value;
+  } catch (error) { if (error instanceof AuthError) throw error; throw new AuthError("NETWORK_ERROR"); }
+  finally { window.clearTimeout(timeout); }
+}

@@ -126,3 +126,8 @@ Bằng chứng ở frontend/.artifacts (bị ignore): auth-api.json, auth-browse
 ## Chưa triển khai
 
 Dashboard Admin, quản lý user trên web, xác minh email, quên/đổi mật khẩu, MFA, API hồ sơ chỉnh sửa, giỏ hàng/đơn hàng/điểm thành viên/thanh toán. AuthGuard là bảo vệ UI tái sử dụng; endpoint mới bắt buộc gọi guard PHP tương ứng, không chỉ tin vào UI.
+
+
+## Cập nhật Giai đoạn 7 (20/11/2026)
+
+Cart/Wishlist theo user đã được triển khai, tái sử dụng Auth::requireUser, CSRF và transport sessionRequest. Phần giới hạn giỏ hàng ở kết quả Giai đoạn 6 phía trên là lịch sử; trạng thái hiện tại và các giới hạn guest merge được ghi trong [API.md – Giai đoạn 7](API.md#giai-đoạn-7--shopping-cart-và-wishlist-mysql-20112026). Đơn hàng/checkout/thanh toán vẫn chưa triển khai.

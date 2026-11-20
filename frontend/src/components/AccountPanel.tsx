@@ -3,7 +3,7 @@ import { useI18n } from "../i18n";
 import { AuthGuard, useAuth } from "../contexts/AuthContext";
 import { AuthError, checkAdmin, register } from "../services/authService";
 
-export function AccountPanel({ onShop, wishes }: { onShop: () => void; wishes: number[] }) {
+export function AccountPanel({ onShop, onWishlist, wishes }: { onShop: () => void; onWishlist: () => void; wishes: number[] }) {
   const { t, formatDate } = useI18n();
   const { user, loading, error: sessionError, refresh, signIn, signOut } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -55,7 +55,7 @@ export function AccountPanel({ onShop, wishes }: { onShop: () => void; wishes: n
         <small>{user ? `${t("auth.memberSince")} ${formatDate(user.created_at.replace(" ", "T"))}` : t("auth.welcome")}</small>
         {user ? <>
           <button className="active" type="button">{t("OVERVIEW")}</button>
-          <button type="button">{t("WISHLIST")} ({wishes.length})</button>
+          <button type="button" onClick={onWishlist}>{t("WISHLIST")} ({wishes.length})</button>
           <AuthGuard role="admin"><button type="button" onClick={() => void verifyAdmin()} disabled={busy}>{t("auth.admin")}</button></AuthGuard>
           <button type="button" onClick={() => void exit()} disabled={busy}>{t("auth.logout")}</button>
         </> : <>
@@ -79,6 +79,7 @@ export function AccountPanel({ onShop, wishes }: { onShop: () => void; wishes: n
           {adminVerified && <AuthGuard role="admin"><p role="status">{t("auth.adminVerified")}</p></AuthGuard>}
           <button className="ink-btn ink-btn-ghost" onClick={onShop}>{t("CONTINUE COLLECTING")}</button>
           <div className="min-[761px]:hidden">
+            <button className="ink-btn ink-btn-ghost" type="button" onClick={onWishlist}>{t("WISHLIST")} ({wishes.length})</button>
             <AuthGuard role="admin"><button className="ink-btn ink-btn-ghost" type="button" onClick={() => void verifyAdmin()} disabled={busy}>{t("auth.admin")}</button></AuthGuard>
             <button className="ink-btn ink-btn-ghost" type="button" onClick={() => void exit()} disabled={busy}>{t("auth.logout")}</button>
           </div>
