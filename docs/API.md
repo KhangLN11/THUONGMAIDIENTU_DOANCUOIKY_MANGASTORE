@@ -26,7 +26,7 @@ PDO dùng utf8mb4, exception mode và native prepared statements. Mật khẩu c
 Mỗi sản phẩm có id, sku, slug, name_vi/name_en, description_vi/description_en, price_vnd, sale_price_vnd, stock_quantity, category, series và image_url.
 `category` là object id/slug/name_vi/name_en hoặc null; `series` là object id/slug/title hoặc null.
 Giá là số nguyên VNĐ; sale_price_vnd có thể null. Không chuyển USD.
-Ảnh chính được chọn từ is_primary=1 theo sort_order rồi id; không có ảnh chính trả null. Không thay bằng ảnh Figma hay ảnh mặc định. LEFT JOIN bảo toàn sản phẩm khi dữ liệu liên quan không có.
+Ảnh chính được chọn từ is_primary=1 theo sort_order rồi id; không có ảnh chính trả null. Trường bổ sung `images` chứa id/image_url/alt_vi/alt_en/sort_order/is_primary, sắp sort_order rồi id; không ảnh trả mảng rỗng. Xem [PRODUCT_CATALOG.md](PRODUCT_CATALOG.md) để cấu hình lưu trữ và nhập sản phẩm/ảnh. Không thay bằng ảnh Figma hay ảnh mặc định. LEFT JOIN bảo toàn sản phẩm khi dữ liệu liên quan không có.
 
 ## Kiểm thử
 
@@ -44,3 +44,8 @@ Get-ChildItem backend -Recurse -Filter *.php | ForEach-Object { & C:/xampp/php/p
 Script giả định bộ demo hiện tại có 8 sản phẩm, chưa có ảnh. Script chỉ đọc database; kiểm tra lỗi kết nối bằng biến môi trường của một tiến trình PHP CLI riêng, không đổi cấu hình Apache. Có thể đặt MANGA_API_BASE và PHP_BINARY nếu URL/đường dẫn khác.
 
 Kết quả trên máy local: kiểm tra cú pháp PHP thành công; HTTP danh sách 8 sản phẩm và chi tiết cả 8 khớp nhau; UTF-8 tiếng Việt, giá VNĐ, giá giảm/null, series null, ảnh null hợp lệ; ID lỗi trả 400; không có sản phẩm trả 404; POST trả 405; thư mục config/src trả 403. Lỗi database giả lập bằng CLI trả DATABASE_ERROR không lộ secret. Kiểm tra qua HTTP tự động, không thao tác trình duyệt GUI.
+
+
+## Authentication và phân quyền (Giai đoạn 6)
+
+Các endpoint `/api/auth/register.php`, `login.php`, `logout.php`, `me.php` và guard `/api/admin/access.php` được mô tả trong [AUTHENTICATION.md](AUTHENTICATION.md), gồm CSRF/cookie, cấu hình local, CLI admin và kiểm thử thực tế. API sản phẩm giữ nguyên.

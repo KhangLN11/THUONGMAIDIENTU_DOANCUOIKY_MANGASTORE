@@ -1,0 +1,21 @@
+{
+  "database_sha256": "08ad8ae24a6eaf1c80fcff134ce23630ea692d00893110ee30575973f245b700",
+  "files": {
+    "frontend/src/App.tsx": "1f16e448450fb1d67a039eabe728dc50a545c34004dc22cc68cd0e3e54175234",
+    "frontend/src/i18n.tsx": "9e8a864b57f874cdf12a338a82c4afed9abcc864ca93c155ad38b8d2efc02889",
+    "frontend/src/index.css": "b171765e24ee9cc18aad0fca69975067d0ec97c25b4ec355a0f0d9efac5c359d",
+    "frontend/src/main.tsx": "b0b39453b481efd9b2e24e08cef3df1e2bdd374cada3e59db4ed89760aa7be7d",
+    "frontend/src/vite-env.d.ts": "1cc0b0900cb887c0afe27a68e3a50ee67401de9b97259cbb4da8691319f5a4c9",
+    "frontend/src/adapters/productAdapter.ts": "10efc351e199031fdd9c0eb90a9d4cdfb8a39e22631b5e071af91948728400b8",
+    "frontend/src/components/ProductImage.tsx": "e00b27569a1cc5de70d73b0a283e12984d6fb8cf704fdb6511d16027c08a9dca",
+    "frontend/src/components/ProductState.tsx": "9cf2fdbc9e15e1ae2308113e57b6bf5620da581cdbe9a525cfbaa9e46620e22a",
+    "frontend/src/config/products.ts": "48d33d28333a5eb206b99384905baee0e6154009bc9b98f865d07f5b50d95d1b",
+    "frontend/src/hooks/useProducts.tsx": "7877aa25a3a5c9dffd6fdc2d6611caba72d59aebc1e32ba3c8d1f1c6da7bb1b5",
+    "frontend/src/services/productService.ts": "7ec06056d1dc0493e733e3268676369dddd14f0f4c7967c87c833dfa78fcaf79",
+    "frontend/src/types/product.ts": "a520bc6981be238682070746d4c09b396de98fc37ec939a7cbe4852ff6629df5",
+    "frontend/vite.config.ts": "959b11fa802e87c5bcb6ef11318a6505ea9f18575e1c9d518cca9c24cbdc817b",
+    "frontend/.env.local": "9c47762445f19f5e6facf769347dd27866be891bf1879e3aa53e9d6e911fdc6b",
+    "frontend/package.json": "b40be5c2bc16b6a3d1d35bd8f40c21175c3f510814453c7a4ad4e5eba191e739",
+    "frontend/package-lock.json": "6c2e812c6308479ccf74d8d055bab5494a3c05996ddadea9656e3cdd99f58ccb"
+  }
+}

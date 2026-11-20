@@ -40,7 +40,43 @@ SQL;
             $statement->bindValue(':id', $id, PDO::PARAM_INT);
         }
         $statement->execute();
-        return array_map([self::class, 'serialize'], $statement->fetchAll());
+        $products = array_map([self::class, 'serialize'], $statement->fetchAll());
+        if ($products === []) {
+            return [];
+        }
+        // Batch-load galleries instead of running one query per product.
+        $imageSql = <<<'SQL'
+SELECT i.id, i.product_id, i.image_url, i.alt_vi, i.alt_en, i.sort_order, i.is_primary
+FROM product_images i
+JOIN products p ON p.id = i.product_id
+WHERE p.status = :status
+SQL;
+        if ($id !== null) {
+            $imageSql .= ' AND p.id = :id';
+        }
+        $imageSql .= ' ORDER BY i.product_id, i.sort_order, i.id';
+        $imagesStatement = $this->pdo->prepare($imageSql);
+        $imagesStatement->bindValue(':status', 'active', PDO::PARAM_STR);
+        if ($id !== null) {
+            $imagesStatement->bindValue(':id', $id, PDO::PARAM_INT);
+        }
+        $imagesStatement->execute();
+        $galleries = [];
+        foreach ($imagesStatement->fetchAll() as $image) {
+            $galleries[(int) $image['product_id']][] = [
+                'id' => (int) $image['id'],
+                'image_url' => $image['image_url'],
+                'alt_vi' => $image['alt_vi'],
+                'alt_en' => $image['alt_en'],
+                'sort_order' => (int) $image['sort_order'],
+                'is_primary' => (bool) $image['is_primary'],
+            ];
+        }
+        foreach ($products as &$product) {
+            $product['images'] = $galleries[$product['id']] ?? [];
+        }
+        unset($product);
+        return $products;
     }
 
     private static function serialize(array $row): array

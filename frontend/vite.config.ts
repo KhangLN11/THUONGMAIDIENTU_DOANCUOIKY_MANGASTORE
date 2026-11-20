@@ -37,6 +37,10 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || "8443"),
       strictPort: true,
       proxy: {
+        "/manga-store/backend/public/uploads/products": {
+          target: env.PRODUCTS_API_PROXY_TARGET || "http://localhost",
+          changeOrigin: true,
+        },
         "/api": {
           target: env.PRODUCTS_API_PROXY_TARGET || "http://localhost",
           changeOrigin: true,

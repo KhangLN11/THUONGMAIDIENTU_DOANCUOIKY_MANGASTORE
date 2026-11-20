@@ -1,5 +1,5 @@
 import { PRODUCTS_API_BASE } from "../config/products";
-import type { ApiProduct, ProductResponse, ProductsResponse } from "../types/product";
+import type { ApiProduct, ApiProductImage, ProductResponse, ProductsResponse } from "../types/product";
 
 export class ProductApiError extends Error {
   constructor(public readonly code: string, public readonly status = 0) {
@@ -21,8 +21,22 @@ function integer(value: unknown, minimum = 0): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < minimum) throw new ProductApiError("INVALID_RESPONSE");
   return value;
 }
+function parseImage(value: unknown): ApiProductImage {
+  const image = object(value);
+  if (typeof image.sort_order !== "number" || !Number.isSafeInteger(image.sort_order) || typeof image.is_primary !== "boolean") {
+    throw new ProductApiError("INVALID_RESPONSE");
+  }
+  return {
+    id: integer(image.id, 1), image_url: text(image.image_url),
+    alt_vi: nullableText(image.alt_vi), alt_en: nullableText(image.alt_en),
+    sort_order: image.sort_order, is_primary: image.is_primary,
+  };
+}
+
 function parseProduct(value: unknown): ApiProduct {
   const p = object(value);
+  if (p.images !== undefined && !Array.isArray(p.images)) throw new ProductApiError("INVALID_RESPONSE");
+  const images = p.images === undefined ? [] : (p.images as unknown[]).map(parseImage);
   const category = p.category === null ? null : object(p.category);
   const series = p.series === null ? null : object(p.series);
   return {
@@ -30,7 +44,7 @@ function parseProduct(value: unknown): ApiProduct {
     name_vi: text(p.name_vi), name_en: text(p.name_en),
     description_vi: nullableText(p.description_vi), description_en: nullableText(p.description_en),
     price_vnd: integer(p.price_vnd), sale_price_vnd: p.sale_price_vnd === null ? null : integer(p.sale_price_vnd),
-    stock_quantity: integer(p.stock_quantity), image_url: nullableText(p.image_url),
+    stock_quantity: integer(p.stock_quantity), image_url: nullableText(p.image_url), images,
     category: category ? { id: integer(category.id, 1), slug: text(category.slug), name_vi: text(category.name_vi), name_en: text(category.name_en) } : null,
     series: series ? { id: integer(series.id, 1), slug: text(series.slug), title: text(series.title) } : null,
   };

@@ -1,3 +1,20 @@
+export interface ApiProductImage {
+  id: number;
+  image_url: string;
+  alt_vi: string | null;
+  alt_en: string | null;
+  sort_order: number;
+  is_primary: boolean;
+}
+
+export interface ProductGalleryImage {
+  id: number;
+  image: string;
+  alt: string;
+  sortOrder: number;
+  isPrimary: boolean;
+}
+
 export interface ApiProduct {
   id: number;
   sku: string;
@@ -12,6 +29,7 @@ export interface ApiProduct {
   category: { id: number; slug: string; name_vi: string; name_en: string } | null;
   series: { id: number; slug: string; title: string } | null;
   image_url: string | null;
+  images?: ApiProductImage[];
 }
 
 export interface Product {
@@ -28,6 +46,7 @@ export interface Product {
   stockQuantity?: number;
   originalPrice?: number;
   categoryKey?: string;
+  gallery?: ProductGalleryImage[];
 }
 
 export interface ProductsResponse {

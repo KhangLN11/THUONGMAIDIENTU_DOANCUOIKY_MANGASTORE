@@ -1,0 +1,17 @@
+{
+  "mysql_catalog_hash_unchanged": true,
+  "protected_frontend_files_unchanged": 16,
+  "existing_products": 8,
+  "existing_images": 0,
+  "public_upload_files_added": 0,
+  "api_http_status": 200,
+  "frontend_http_status": 200,
+  "prepared_products": 23,
+  "prepared_images": 35,
+  "sqlite_tests": "passed, IDs deliberately assigned above 1000; rerun/no-duplicates/legacy-rows/FK/primary/rejection checks",
+  "mariadb_native_prepare": "76 INSERT statements parsed, executions 0",
+  "live_import_executed": false,
+  "post_import_gui_tests_executed": false,
+  "manifest_sha256": "756e772175d291119761cae948a5c242126010a3c84800269b746af825521d1f",
+  "products_auto_increment_unchanged": 9
+}

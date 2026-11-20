@@ -25,19 +25,27 @@ def request(path, status, method='GET'):
     return body, response
 
 result, _ = request('api/products.php', 200)
-assert result['meta']['total'] == len(result['data']) == 8
-for product in result['data']:
-    assert product['image_url'] is None
-    assert isinstance(product['price_vnd'], int)
-    assert product['sale_price_vnd'] is None or isinstance(product['sale_price_vnd'], int)
-    detail, _ = request('api/product.php?id=' + str(product['id']), 200)
-    assert detail['data'] == product
-assert result['data'][0]['name_vi'] == 'H\u00e0nh Tr\u00ecnh M\u01b0a \u0110\u00eam \u2013 T\u1eadp 1'
-assert result['data'][0]['price_vnd'] == 45000
-assert result['data'][0]['sale_price_vnd'] is None
-assert result['data'][1]['sale_price_vnd'] == 49000
-assert any(product['series'] is None for product in result['data'])
-print('PASS: list of 8, all 8 details, Vietnamese UTF-8, integer VND, null images/series, sale prices')
+if result['data'] and all(product['sku'].startswith('CAT-') for product in result['data']):
+    # The approved live catalog replaces the legacy eight-product test fixture.
+    from test_live_catalog import verify
+    live_report = verify()
+    report_path = Path(__file__).resolve().parents[2] / 'frontend/.artifacts/catalog-live-api.json'
+    report_path.write_text(json.dumps(live_report, indent=2) + '\n', encoding='utf-8')
+else:
+    assert result['meta']['total'] == len(result['data']) == 8
+    for product in result['data']:
+        assert product['image_url'] is None
+        assert product['images'] == []
+        assert isinstance(product['price_vnd'], int)
+        assert product['sale_price_vnd'] is None or isinstance(product['sale_price_vnd'], int)
+        detail, _ = request('api/product.php?id=' + str(product['id']), 200)
+        assert detail['data'] == product
+    assert result['data'][0]['name_vi'] == 'H\u00e0nh Tr\u00ecnh M\u01b0a \u0110\u00eam \u2013 T\u1eadp 1'
+    assert result['data'][0]['price_vnd'] == 45000
+    assert result['data'][0]['sale_price_vnd'] is None
+    assert result['data'][1]['sale_price_vnd'] == 49000
+    assert any(product['series'] is None for product in result['data'])
+    print('PASS: list of 8, all 8 details, Vietnamese UTF-8, integer VND, null images/series, sale prices')
 for query in ['', '?id=0', '?id=-1', '?id=abc', '?id=1.5', '?id[]=1', '?id=1%20OR%201=1', '?id=999999999999999999999999999999']:
     assert request('api/product.php' + query, 400)[0]['error']['code'] == 'INVALID_ID'
 print('PASS: 8 invalid ID cases -> 400')

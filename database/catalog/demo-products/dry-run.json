@@ -1,0 +1,24 @@
+{
+    "mode": "dry-run",
+    "manifest_sha256": "756e772175d291119761cae948a5c242126010a3c84800269b746af825521d1f",
+    "validation": {
+        "products": 23,
+        "images": 35,
+        "by_category": {
+            "manga": 14,
+            "novels": 3,
+            "figures": 6
+        }
+    },
+    "plan": {
+        "new_categories": 1,
+        "new_series": 15,
+        "new_products": 23,
+        "new_images": 35,
+        "existing_products": 0,
+        "conflicts": [],
+        "legacy_policy": "UNCHANGED: no UPDATE or DELETE"
+    },
+    "approval_required_for_writes": true,
+    "mysql_writes": 0
+}

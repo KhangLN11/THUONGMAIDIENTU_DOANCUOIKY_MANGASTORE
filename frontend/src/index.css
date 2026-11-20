@@ -2140,3 +2140,20 @@ footer button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* API product photographs: preserve the full source inside the original frames.
+   Demo artwork and editorial backgrounds retain their original cover behavior. */
+.product-card[data-source="api"] .product-img img {
+  object-fit: contain;
+  object-position: center;
+  padding: 14px;
+}
+.product-card[data-source="api"]:hover .product-img img {
+  transform: scale(1.02) rotate(0.3deg);
+}
+.product-page[data-product-id] .main-image img,
+.product-page[data-product-id] .thumbs img {
+  object-fit: contain;
+  object-position: center;
+  padding: 8px;
+}

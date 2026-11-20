@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n, useTranslateDocument } from "./i18n";
 import type { Product } from "./types/product";
 import { USE_PRODUCTS_API } from "./config/products";
 import { localizeProduct } from "./adapters/productAdapter";
 import { ProductsProvider, useProducts, useProduct } from "./hooks/useProducts";
+import { featuredManga } from "./config/featuredManga";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AccountPanel } from "./components/AccountPanel";
 import { ProductImage } from "./components/ProductImage";
 import { ProductState, ProductSkeletons } from "./components/ProductState";
 
@@ -20,6 +23,15 @@ const images = {
   cards:
     "https://images.unsplash.com/photo-1666153184621-bc6445e3568d?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200",
 };
+
+// Editorial Demo panels are static: they do not represent database series.
+const demoFeaturedManga = [
+  { key: "neo-tokyo", title: ["NEO", "TOKYO"], category: "CYBERPUNK", description: "A city that never forgives.", image: images.comic, mark: "探索" },
+  { key: "void-runner", title: ["VOID", "RUNNER"], category: "DARK FANTASY", description: "Beyond the edge of memory.", image: images.open, mark: "虚無" },
+  { key: "blade-zero", title: ["BLADE", "ZERO"], category: "SAMURAI", description: "Honor ends. The blade remains.", image: images.stack, mark: "斬!" },
+  { key: "steel-soul", title: ["STEEL", "SOUL"], category: "MECHA", description: "Built to obey. Born to feel.", image: images.cards, mark: "鋼" },
+] as const;
+
 
 const demoProducts: Product[] = [
   {
@@ -359,16 +371,19 @@ function CharacterArt() {
 
 function Home({
   go,
+  openSeries,
   add,
   wishes,
   toggleWish,
 }: {
   go: (p: Page, id?: number) => void;
+  openSeries: (slug: string) => void;
   add: (p: Product) => void;
   wishes: number[];
   toggleWish: (id: number) => void;
 }) {
   const { products, status, retry } = useProducts();
+  const { language, t } = useI18n();
   return (
     <>
       <main>
@@ -432,50 +447,24 @@ function Home({
             <i>UNIVERSES</i>
           </SectionTitle>
           <div className="collection-grid">
-            <button className="collection c1" onClick={() => go("series")}>
-              <img src={images.comic} alt="" />
-              <span>01 / CYBERPUNK</span>
-              <h3>
-                NEO
-                <br />
-                TOKYO
-              </h3>
-              <p>A city that never forgives.</p>
-              <b>探索</b>
-            </button>
-            <button className="collection c2" onClick={() => go("series")}>
-              <img src={images.open} alt="" />
-              <span>02 / DARK FANTASY</span>
-              <h3>
-                VOID
-                <br />
-                RUNNER
-              </h3>
-              <p>Beyond the edge of memory.</p>
-              <b>虚無</b>
-            </button>
-            <button className="collection c3" onClick={() => go("series")}>
-              <img src={images.stack} alt="" />
-              <span>03 / SAMURAI</span>
-              <h3>
-                BLADE
-                <br />
-                ZERO
-              </h3>
-              <p>Honor ends. The blade remains.</p>
-              <b>斬!</b>
-            </button>
-            <button className="collection c4" onClick={() => go("series")}>
-              <img src={images.cards} alt="" />
-              <span>04 / MECHA</span>
-              <h3>
-                STEEL
-                <br />
-                SOUL
-              </h3>
-              <p>Built to obey. Born to feel.</p>
-              <b>鋼</b>
-            </button>
+            {USE_PRODUCTS_API ? featuredManga.map((series, index) => (
+              <button className={`collection c${index + 1}`} key={series.slug}
+                data-featured-series={series.slug} onClick={() => openSeries(series.slug)}>
+                <img src={series.image} alt="" style={{ objectPosition: series.position }} />
+                <span data-product-text>{String(index + 1).padStart(2, "0")} / {series.category[language]}</span>
+                <h3 data-product-text>{series.title[0]}{series.title[1] && <> <br />{series.title[1]}</>}</h3>
+                <p data-product-text>{series.description[language]}</p>
+                <b>{series.mark}</b>
+              </button>
+            )) : demoFeaturedManga.map((series, index) => (
+              <button type="button" aria-disabled="true" className={`collection c${index + 1}`} key={series.key} data-featured-demo={series.key}>
+                <img src={series.image} alt="" />
+                <span>{String(index + 1).padStart(2, "0")} / {t(series.category)}</span>
+                <h3>{t(series.title[0])}<br />{t(series.title[1])}</h3>
+                <p>{t(series.description)}</p>
+                <b>{series.mark}</b>
+              </button>
+            ))}
           </div>
         </section>
 
@@ -599,11 +588,13 @@ function Home({
 
 function Shop({
   go,
+  seriesSlug,
   add,
   wishes,
   toggleWish,
 }: {
   go: (p: Page, id?: number) => void;
+  seriesSlug: string | null;
   add: (p: Product) => void;
   wishes: number[];
   toggleWish: (id: number) => void;
@@ -613,15 +604,18 @@ function Shop({
   const formatCurrency = (value: number) => currency(value, USE_PRODUCTS_API ? "VND" : "USD");
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
-  const filtered = products.filter(
+  const seriesProducts = seriesSlug
+    ? products.filter(p => p.source === "api" && p.api?.series?.slug === seriesSlug)
+    : products;
+  const filtered = seriesProducts.filter(
     (p) =>
       (category === "All" || (USE_PRODUCTS_API ? p.categoryKey : p.category) === category) &&
       p.name.toLowerCase().includes(query.toLowerCase()),
   );
   const categories = USE_PRODUCTS_API
-    ? ["All", ...Array.from(new Set(products.map(p => p.categoryKey ?? "uncategorized")))]
+    ? ["All", ...Array.from(new Set(seriesProducts.map(p => p.categoryKey ?? "uncategorized")))]
     : ["All", "Manga", "Figures", "Posters", "Apparel", "Accessories"];
-  const priceMax = USE_PRODUCTS_API ? Math.max(1, ...products.map(p => p.originalPrice ?? p.price)) : 150;
+  const priceMax = USE_PRODUCTS_API ? Math.max(1, ...seriesProducts.map(p => p.originalPrice ?? p.price)) : 150;
   return (
     <main className="inner-page">
       <div className="page-hero">
@@ -659,7 +653,7 @@ function Shop({
               key={c}
             >
               {USE_PRODUCTS_API && c !== "All" ? products.find(p => p.categoryKey === c)?.category || t("Uncategorized") : c}
-              <span>{c === "All" ? products.length : products.filter((p) => (USE_PRODUCTS_API ? p.categoryKey : p.category) === c).length}</span>
+              <span>{c === "All" ? seriesProducts.length : seriesProducts.filter((p) => (USE_PRODUCTS_API ? p.categoryKey : p.category) === c).length}</span>
             </button>
           ))}
           <hr />
@@ -711,7 +705,25 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
   const formatCurrency = (value: number) => currency(value, product?.source === "api" ? "VND" : "USD");
   const p = product ?? products[1];
   const [qty, setQty] = useState(1);
-  const [main, setMain] = useState(product?.image ?? images.cards);
+  const gallery = product
+    ? p.gallery?.length ? p.gallery : [{ id: 0, image: p.image, alt: p.name, sortOrder: 0, isPrimary: false }]
+    : [images.cards, images.comic, images.open].map((image, index) => ({ id: index, image, alt: `View ${index + 1}`, sortOrder: index, isPrimary: false }));
+  const initialImage = product
+    ? gallery.find(image => image.isPrimary && image.image === p.image) ?? gallery.find(image => image.image === p.image) ?? gallery[0]
+    : gallery[0];
+  const mainImageRef = useRef<HTMLDivElement>(null);
+  const [mainImageHeight, setMainImageHeight] = useState(650);
+  useEffect(() => {
+    if (!product || !mainImageRef.current) return;
+    const image = mainImageRef.current;
+    const update = () => setMainImageHeight(image.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(image);
+    return () => observer.disconnect();
+  }, [product?.id]);
+  const [selectedImageId, setSelectedImageId] = useState(initialImage.id);
+  const activeImage = gallery.find(image => image.id === selectedImageId) ?? initialImage;
   return (
     <main className="inner-page product-page" data-product-id={product?.id}>
       <div className="crumbs">
@@ -719,15 +731,15 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
       </div>
       <div className="product-detail">
         <div className="gallery">
-          <div className="thumbs">
-            {(product ? [p.image] : [images.cards, images.comic, images.open]).map((im, i) => (
-              <button className={main === im ? "active" : ""} onClick={() => setMain(im)} key={im}>
-                <ProductImage src={im} alt={`View ${i + 1}`} />
+          <div className="thumbs" style={product ? { overflow: "auto", maxHeight: mainImageHeight, minWidth: 0 } : undefined}>
+            {gallery.map((image) => (
+              <button className={activeImage.id === image.id ? "active" : ""} onClick={() => setSelectedImageId(image.id)} key={image.id} aria-pressed={product ? activeImage.id === image.id : undefined} style={product ? { flexShrink: 0 } : undefined}>
+                <ProductImage src={image.image} alt={image.alt} />
               </button>
             ))}
           </div>
-          <div className="main-image">
-            <ProductImage src={main} alt={p.name} />
+          <div className="main-image" ref={mainImageRef}>
+            <ProductImage src={activeImage.image} alt={product ? activeImage.alt : p.name} />
             {!product && <span>LIMITED / 250</span>}
           </div>
         </div>
@@ -1068,73 +1080,7 @@ function Checkout({ cart, go }: { cart: Product[]; go: (p: Page, id?: number) =>
 }
 
 function Account({ go, wishes }: { go: (p: Page, id?: number) => void; wishes: number[] }) {
-  const { t, formatCurrency, formatDate } = useI18n();
-  return (
-    <main className="inner-page account-page">
-      <div className="page-hero">
-        <p>MEMBER FILE / 000042</p>
-        <h1>
-          {t("account.headingLead")} <i>{t("account.headingAccent")}</i>
-        </h1>
-        <b>会員</b>
-      </div>
-      <div className="account-layout">
-        <aside>
-          <b>AK</b>
-          <h3>AKIRA KUROSAWA</h3>
-          <small>MEMBER SINCE 2024</small>
-          {[
-            "OVERVIEW",
-            "ORDER HISTORY",
-            `${t("WISHLIST")} (${wishes.length.toLocaleString()})`,
-            "ADDRESSES",
-            "ACCOUNT SETTINGS",
-          ].map((x, i) => (
-            <button className={i === 0 ? "active" : ""} key={x}>
-              {x}
-              <Icon name="arrow" size={15} />
-            </button>
-          ))}
-        </aside>
-        <section>
-          <span>DASHBOARD / 概要</span>
-          <h2>
-            WELCOME BACK,
-            <br />
-            <i>AKIRA.</i>
-          </h2>
-          <div className="account-stats">
-            <div>
-              <b>03</b>
-              <p>TOTAL ORDERS</p>
-            </div>
-            <div>
-              <b>{wishes.length.toString().padStart(2, "0")}</b>
-              <p>SAVED OBJECTS</p>
-            </div>
-            <div>
-              <b>250</b>
-              <p>MEMBER POINTS</p>
-            </div>
-          </div>
-          <h3>RECENT ORDER</h3>
-          <div className="order">
-            <img src={images.cards} alt="" />
-            <div>
-              <small>ORDER #MU-240418</small>
-              <h4>THE RONIN FIGURE + 2 OBJECTS</h4>
-              <p>{formatDate("2025-04-18T12:00:00Z")}</p>
-            </div>
-            <span>SHIPPED</span>
-            <b>{formatCurrency(145.5)}</b>
-          </div>
-          <Button ghost onClick={() => go("shop")}>
-            CONTINUE COLLECTING
-          </Button>
-        </section>
-      </div>
-    </main>
-  );
+  return <AccountPanel onShop={() => go("shop")} wishes={wishes} />;
 }
 
 function Footer({ go }: { go: (p: Page, id?: number) => void }) {
@@ -1197,13 +1143,19 @@ function Footer({ go }: { go: (p: Page, id?: number) => void }) {
 }
 
 export default function App() {
-  return <ProductsProvider demoProducts={demoProducts}><StoreApp /></ProductsProvider>;
+  return <AuthProvider><ProductsProvider demoProducts={demoProducts}><StoreApp /></ProductsProvider></AuthProvider>;
 }
 
 function StoreApp() {
   const { language, t } = useI18n();
   useTranslateDocument();
-  const [page, setPage] = useState<Page>("home");
+  const [page, setPage] = useState<Page>(() => window.location.hash === "#account" ? "account" : "home");
+  useEffect(() => {
+    const openAccount = () => { if (window.location.hash === "#account") setPage("account"); };
+    window.addEventListener("hashchange", openAccount);
+    return () => window.removeEventListener("hashchange", openAccount);
+  }, []);
+  const [shopSeriesSlug, setShopSeriesSlug] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [storedCart, setStoredCart] = useState<Product[]>([]);
   const cart = useMemo(() => storedCart.map(p => localizeProduct(p, language)), [storedCart, language]);
@@ -1211,11 +1163,19 @@ function StoreApp() {
   const [wishes, setWishes] = useState<number[]>([]);
   const [toast, setToast] = useState("");
   const go = (p: Page, id?: number) => {
+    if (p === "account") window.history.replaceState(null, "", "#account");
+    else if (window.location.hash === "#account") window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (p === "shop") setShopSeriesSlug(null);
     if (p === "product" && USE_PRODUCTS_API) {
       if (id === undefined) { setPage("shop"); return; }
       setSelectedId(id);
     }
     setPage(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const openSeries = (slug: string) => {
+    setShopSeriesSlug(slug);
+    setPage("shop");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const add = (p: Product) => {
@@ -1238,8 +1198,8 @@ function StoreApp() {
   return (
     <div className="app">
       {page !== "checkout" && <Header go={go} cartCount={cart.length} />}
-      {page === "home" && <Home go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
-      {page === "shop" && <Shop go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
+      {page === "home" && <Home go={go} openSeries={openSeries} add={add} wishes={wishes} toggleWish={toggleWish} />}
+      {page === "shop" && <Shop key={shopSeriesSlug ?? "all"} seriesSlug={shopSeriesSlug} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "product" && (USE_PRODUCTS_API ? <ApiProductPage id={selectedId} add={add} go={go} /> : <ProductPage add={add} go={go} />)}
       {page === "series" && <Series go={go} />}
       {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} />}

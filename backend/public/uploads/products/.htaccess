@@ -1,0 +1,15 @@
+# Only generated raster image names may be served. No scripts or directory listing.
+Options -Indexes -ExecCGI -Includes -MultiViews
+AcceptPathInfo Off
+SetHandler none
+RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .cgi .pl .jpg .png .webp
+RemoveType .php .phtml .phar .jpg .png .webp
+AddType image/jpeg .jpg
+AddType image/png .png
+AddType image/webp .webp
+<FilesMatch "^(?![a-f0-9]{32}\.(?:jpg|png|webp)$).+">
+    Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+</IfModule>

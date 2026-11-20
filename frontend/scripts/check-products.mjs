@@ -191,6 +191,53 @@ try {
     await screenshot('live-shop-mobile');
     await cdp('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
     await screenshot('live-shop-desktop');
+    if (process.argv.includes('--images')) {
+      const fixture=JSON.parse(await readFile(path.join(artifacts,'image-http-fixtures.json'),'utf8'));
+      const withImages={...actual.data[0],image_url:fixture.images[1].image_url,images:[fixture.images[2],fixture.images[1],fixture.images[0]]};
+      interceptedReply=params=>({status:200,body:params.request.url.includes('products.php') ? {success:true,data:actual.data.map(p=>p.id===1?withImages:p),meta:{total:8}} : {success:true,data:withImages}});
+      await cdp('Fetch.enable',{patterns:[{urlPattern:'*api/products.php*',requestStage:'Request'},{urlPattern:'*api/product.php*',requestStage:'Request'}]});
+      await reload();
+      await navigate('shop');
+      await waitFor("document.querySelectorAll('.shop-grid .product-card').length===8");
+      await waitFor(`document.querySelector('.shop-grid img')?.getAttribute('src') === ${JSON.stringify(fixture.images[1].image_url)}`);
+      await waitFor("document.querySelector('.shop-grid img')?.naturalWidth===16");
+      const cardHeight=await evaluate("document.querySelector('.shop-grid .product-img').getBoundingClientRect().height");
+      await screenshot('images-shop-desktop');
+      await evaluate("document.querySelector('.shop-grid .product-img').click()");
+      await waitFor("document.querySelectorAll('.thumbs button').length===3");
+      assert.deepEqual(await evaluate("Array.from(document.querySelectorAll('.thumbs img')).map(image=>image.getAttribute('src'))"),fixture.images.map(image=>image.image_url));
+      assert.equal(await evaluate("document.querySelector('.main-image img').getAttribute('src')"),fixture.images[1].image_url);
+      await evaluate("document.querySelectorAll('.thumbs button')[2].click()");
+      await waitFor(`document.querySelector('.main-image img')?.getAttribute('src')===${JSON.stringify(fixture.images[2].image_url)}`);
+      const calls=requests.filter(url=>url.includes('/api/product.php')).length;
+      await language('vi');
+      await waitFor("document.querySelector('.main-image img')?.getAttribute('alt') === 'Anh 3'");
+      assert.equal(await evaluate("document.querySelector('.main-image img').getAttribute('src')"),fixture.images[2].image_url);
+      assert.equal(await evaluate("document.querySelector('[data-product-id]').dataset.productId"),'1');
+      assert.equal(requests.filter(url=>url.includes('/api/product.php')).length,calls);
+      assert((await evaluate("document.querySelector('.product-info h2').textContent")).includes('45.000'));
+      await screenshot('images-detail-desktop');
+      await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+      await screenshot('images-detail-mobile');
+      assert(await evaluate('document.documentElement.scrollWidth<=innerWidth'));
+      // Stress the existing thumbnail layout without adding CSS or catalog rows.
+      withImages.images=Array.from({length:12},(_,index)=>({...fixture.images[index%3],id:index+1,sort_order:index,is_primary:index===1}));
+      await reload();
+      await navigate('shop');
+      await waitFor("document.querySelectorAll('.shop-grid .product-card').length===8");
+      await evaluate("document.querySelector('.shop-grid .product-img').click()");
+      await waitFor("document.querySelectorAll('.thumbs button').length===12");
+      assert(await evaluate('document.documentElement.scrollWidth<=innerWidth'));
+      await cdp('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+      assert(await evaluate("document.querySelector('.thumbs').getBoundingClientRect().height <= document.querySelector('.main-image').getBoundingClientRect().height + 1"),'Desktop thumbnail gallery must not stretch main image row');
+      await cdp('Fetch.disable');
+      await reload();
+      await language('en');
+      await navigate('shop');
+      await waitFor("document.querySelectorAll('.shop-grid .product-card').length===8");
+      assert.equal(await evaluate("document.querySelector('.shop-grid .product-img').getBoundingClientRect().height"),cardHeight);
+      console.log('PASS gallery: real Apache/Vite images + browser-only API fixtures; primary, sorted thumbnails, selection, VI/EN alt, VND, 12-image desktop/mobile, stable card size');
+    }
     console.log('PASS live: actual IDs 1/8, nonsequential mock 71, VND, VI/EN, cart, null/broken images, stock zero, zero-price sale, mobile, loading/empty, malformed/failed responses, 404/network error + retry, no fallback');
   }
   assert.equal(exceptions.length,0,JSON.stringify(exceptions));
