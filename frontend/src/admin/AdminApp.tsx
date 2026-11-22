@@ -8,6 +8,7 @@ import { PRODUCT_PLACEHOLDER } from "../adapters/productAdapter";
 import * as api from "./adminService";
 import "./admin.css";
 import { AdminReports } from "./AdminReports";
+import { AdminProductImages, ImagePreview, validateImage } from "./AdminProductImages";
 type Tab = "dashboard" | "orders" | "products" | "inventory" | "customers" | "reports";
 const tabs: Tab[] = ["dashboard", "orders", "products", "inventory", "customers", "reports"];
 function tabFromHash(): Tab {
@@ -740,16 +741,20 @@ function AdminProductForm({
   const [error, setError] = useState<string | null>(null),
     [notice, setNotice] = useState(false),
     [busy, setBusy] = useState(false),
-    [file, setFile] = useState<File | null>(null);
+    [creationFile, setCreationFile] = useState<File | null>(null),
+    [creationInputKey, setCreationInputKey] = useState(0),
+    [imageBusy, setImageBusy] = useState(false),
+    [partial, setPartial] = useState(false);
   const meta = useLoad(api.getMetadata, []);
   const set = (k: keyof FormFields, v: string) => setFields((f) => ({ ...f, [k]: v }));
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || imageBusy) return;
     setError(null);
     setNotice(false);
     setBusy(true);
     try {
+      if (creationFile) validateImage(creationFile);
       const price = Number(fields.price_vnd),
         sale = fields.sale_price_vnd === "" ? null : Number(fields.sale_price_vnd),
         stock = Number(fields.stock_quantity),
@@ -782,28 +787,33 @@ function AdminProductForm({
         sale_price_vnd: sale,
         status: fields.status,
       };
-      const result = p
-        ? await api.updateProduct({ ...body, product_id: p.id, expected_version: p.version })
-        : await api.createProduct({ ...body, stock_quantity: stock });
+      if (partial && !creationFile && !p?.images?.length && fields.status === "active")
+        throw new AuthError("IMAGE_REQUIRED");
+      const stagedBody = creationFile ? { ...body, status: "draft" } : body;
+      let result = p
+        ? await api.updateProduct({ ...stagedBody, product_id: p.id, expected_version: p.version })
+        : await api.createProduct({ ...stagedBody, stock_quantity: stock });
       setCurrent(result);
-      setNotice(true);
-    } catch (e) {
-      setError(code(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function upload() {
-    if (!p || !file || busy) return;
-    setError(null);
-    setNotice(false);
-    setBusy(true);
-    try {
-      if (file.size > 5 * 1024 * 1024) throw new AuthError("INVALID_IMAGE");
-      await api.uploadImage(p.id, file);
-      const fresh = await api.getProduct(p.id);
-      setCurrent({ ...fresh, version: p.version });
-      setFile(null);
+      api.catalogChanged(result.id);
+      if (creationFile) {
+        setPartial(true);
+        await api.uploadImage(result.id, creationFile);
+        setCreationFile(null);
+        const savedVersion = result.version;
+        result = await api.getProduct(result.id);
+        setCurrent({ ...result, version: savedVersion });
+        if (result.version !== savedVersion) throw new AuthError("STALE_DATA");
+        if (body.status !== result.status)
+          result = await api.updateProduct({
+            ...body,
+            product_id: result.id,
+            expected_version: result.version,
+          });
+        setCurrent(result);
+        api.catalogChanged(result.id);
+        setPartial(false);
+      }
+      setPartial(false);
       setNotice(true);
     } catch (e) {
       setError(code(e));
@@ -819,12 +829,17 @@ function AdminProductForm({
   ];
   return (
     <section className="admin-panel" data-admin-product-form>
-      <button className="admin-button" onClick={onClose}>
+      <button className="admin-button" disabled={busy || imageBusy} onClick={onClose}>
         {t("admin.back")}
       </button>
       <h2>{t(p ? "admin.editProduct" : "admin.addProduct")}</h2>
       <ErrorBox value={error || meta.error} />
       {notice && <p role="status">{t("admin.saved")}</p>}
+      {partial && (
+        <p className="admin-alert" data-creation-partial>
+          {t("images.partial")}
+        </p>
+      )}
       <form noValidate onSubmit={(e) => void save(e)}>
         <div className="admin-form-grid">
           {textFields.map(([k, label, max]) => (
@@ -835,7 +850,7 @@ function AdminProductForm({
                 maxLength={max}
                 required
                 value={fields[k]}
-                disabled={busy}
+                disabled={busy || imageBusy}
                 onChange={(e) => set(k, e.target.value)}
               />
             </label>
@@ -847,7 +862,7 @@ function AdminProductForm({
                 name={k}
                 maxLength={2000}
                 rows={4}
-                disabled={busy}
+                disabled={busy || imageBusy}
                 value={fields[k]}
                 onChange={(e) => set(k, e.target.value)}
               />
@@ -858,7 +873,7 @@ function AdminProductForm({
             <select
               name="category_id"
               value={fields.category_id}
-              disabled={busy}
+              disabled={busy || imageBusy}
               onChange={(e) => set("category_id", e.target.value)}
             >
               <option value="">{t("admin.select")}</option>
@@ -874,7 +889,7 @@ function AdminProductForm({
             <select
               name="series_id"
               value={fields.series_id}
-              disabled={busy}
+              disabled={busy || imageBusy}
               onChange={(e) => set("series_id", e.target.value)}
             >
               <option value="">—</option>
@@ -893,7 +908,7 @@ function AdminProductForm({
               min="0"
               name="price_vnd"
               value={fields.price_vnd}
-              disabled={busy}
+              disabled={busy || imageBusy}
               onChange={(e) => set("price_vnd", e.target.value)}
             />
           </label>
@@ -905,7 +920,7 @@ function AdminProductForm({
               min="1"
               name="sale_price_vnd"
               value={fields.sale_price_vnd}
-              disabled={busy}
+              disabled={busy || imageBusy}
               onChange={(e) => set("sale_price_vnd", e.target.value)}
             />
           </label>
@@ -918,7 +933,7 @@ function AdminProductForm({
               name="stock_quantity"
               value={p ? p.stock_quantity : fields.stock_quantity}
               readOnly={!!p}
-              disabled={busy}
+              disabled={busy || imageBusy}
               onChange={(e) => set("stock_quantity", e.target.value)}
             />
             {p && <small>{t("admin.stockSeparate")}</small>}
@@ -928,7 +943,7 @@ function AdminProductForm({
             <select
               name="product_status"
               value={fields.status}
-              disabled={busy}
+              disabled={busy || imageBusy}
               onChange={(e) => set("status", e.target.value)}
             >
               {["draft", "active", "archived"].map((s) => (
@@ -939,38 +954,64 @@ function AdminProductForm({
             </select>
           </label>
         </div>
+        {!product && (!p || creationFile) && (
+          <div className="admin-creation-image">
+            <label>
+              {t("images.createChoose")}
+              <input
+                key={creationInputKey}
+                name="creation_image"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp"
+                disabled={busy || imageBusy}
+                onChange={(e) => {
+                  setCreationFile(e.target.files?.[0] ?? null);
+                  setNotice(false);
+                }}
+              />
+            </label>
+            <ImagePreview file={creationFile} />
+            {creationFile && (
+              <button
+                type="button"
+                className="admin-button"
+                disabled={busy || imageBusy}
+                onClick={() => {
+                  setCreationFile(null);
+                  setCreationInputKey((k) => k + 1);
+                }}
+              >
+                {t("images.cancel")}
+              </button>
+            )}
+            <p>{t("images.creationPolicy")}</p>
+          </div>
+        )}
         <div className="admin-actions">
-          <button className="admin-button primary" type="submit" disabled={busy || meta.loading}>
+          <button
+            className="admin-button primary"
+            type="submit"
+            disabled={busy || imageBusy || meta.loading}
+          >
             {t("admin.save")}
           </button>
-          <button type="button" className="admin-button" onClick={onClose}>
+          <button
+            type="button"
+            className="admin-button"
+            disabled={busy || imageBusy}
+            onClick={onClose}
+          >
             {t("admin.close")}
           </button>
         </div>
       </form>
       {p && (
-        <>
-          <h3>{t("admin.images")}</h3>
-          <p className="admin-note">{t("admin.imagePolicy")}</p>
-          <div className="admin-gallery">
-            {p.images?.map((i) => (
-              <ProductImage key={i.id} src={i.image_url} alt="" />
-            ))}
-          </div>
-          <label>
-            {t("admin.chooseImage")}
-            <input
-              name="image"
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              disabled={busy}
-            />
-          </label>
-          <button className="admin-button" disabled={busy || !file} onClick={() => void upload()}>
-            {t("admin.upload")}
-          </button>
-        </>
+        <AdminProductImages
+          product={p}
+          disabled={busy}
+          onBusy={setImageBusy}
+          onChange={(fresh) => setCurrent(fresh)}
+        />
       )}
     </section>
   );

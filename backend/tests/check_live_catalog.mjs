@@ -69,8 +69,8 @@ try {
   assert(await evaluate("Array.from(document.querySelectorAll('main .product-card img')).every(i=>!i.getAttribute('src').includes('placeholder'))"));
   await screenshot('catalog-live-home-desktop');
   await evaluate("document.querySelectorAll('.site-header nav button')[2].click()");
-  await waitFor("document.querySelectorAll('.series-page .product-card').length===4");
-  assert.deepEqual(await evaluate("Array.from(document.querySelectorAll('.series-page .product-meta h3')).map(n=>n.textContent)"),catalog.slice(0,4).map(p=>p.name_en));
+  await waitFor("document.querySelectorAll('.series-page [data-series-card]').length===7");
+  assert.equal(await evaluate("document.querySelectorAll('[data-series-card]').length"),7);
   await navigate('shop');
   await waitFor("document.querySelectorAll('.shop-grid .product-card').length===23");
   await waitFor("Array.from(document.querySelectorAll('.shop-grid img')).every(i=>i.complete&&i.naturalWidth>0)");
@@ -130,7 +130,7 @@ try {
     await navigate('shop');
     await waitFor("document.querySelectorAll('.shop-grid .product-card').length===23");
   }
-  console.log('PASS actual GUI: all 23 details, all 35 gallery selections, VI/EN names/descriptions/alts, VND, real images, category filters/search and hover');
+  console.log('PASS actual GUI: all 23 details, all '+report.gallerySelections+' gallery selections, VI/EN names/descriptions/alts, VND, real images, category filters/search and hover');
   await evaluate("document.querySelector('.header-actions .cart-icon').click()");
   await waitFor("document.querySelectorAll('.cart-row').length===1");
   const cartProduct=catalog.find(p=>p.sku==='CAT-NV-WWY-VI');

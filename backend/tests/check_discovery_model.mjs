@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { mangaSeries, figureGroups, merchandise, volumeOf, sortVolumes, filterVolumes, seriesMatches, heroSeries } from '../../frontend/src/discovery/catalogModel.ts';
+const response=await fetch('http://localhost/manga-store/backend/public/api/products.php');assert.equal(response.status,200);const {data}=await response.json();assert.equal(data.length,23);
+const products=data.map(p=>({id:p.id,name:p.name_en,series:p.series?.title??'',price:p.sale_price_vnd??p.price_vnd,categoryKey:p.category?.slug,category:p.category?.name_en??'',stockQuantity:p.stock_quantity,image:p.image_url??'/product-placeholder.svg',source:'api',api:p}));
+const groups=mangaSeries(products);assert.equal(groups.length,7);assert.equal(groups.reduce((n,g)=>n+g.products.length,0),14);assert(groups.every(g=>g.volumeCount===2&&g.products.map(volumeOf).join(',')==='1,2'));
+assert.deepEqual(heroSeries(groups).map(g=>g.slug),['one-piece','attack-on-titan','naruto','dragon-ball']);assert.equal(heroSeries(groups.filter(g=>g.slug!=='one-piece')).length,4);
+assert(seriesMatches(groups.find(g=>g.slug==='attack-on-titan'),'dai chien titan'));assert(seriesMatches(groups.find(g=>g.slug==='kaguya-sama-love-is-war'),'CUOC CHIEN TO TINH'));
+assert.equal(merchandise(products).length,6);const figures=figureGroups(products,{query:'',category:'all',series:'all'});assert.equal(figures.length,5);assert.equal(figures.find(g=>g.slug==='frieren-beyond-journeys-end').products.length,2);assert.equal(figureGroups(products,{query:'',category:'accessories',series:'all'}).length,0);
+const base=groups[0].products[0];const volume=n=>({...base,id:100+n,api:{...base.api,name_vi:'Truyện - Tập '+n,name_en:'Manga, Vol. '+n}});
+assert.deepEqual(sortVolumes([volume(10),volume(2),volume(1)]).map(volumeOf),[1,2,10]);assert.deepEqual(sortVolumes([volume(10),volume(2),volume(1)],'desc').map(volumeOf),[10,2,1]);
+for(const query of ['1','Tập 1','Volume 1','vol. 1'])assert.deepEqual(filterVolumes([volume(1),volume(10),volume(21)],{query,direction:'asc',inStock:false}).map(volumeOf),[1]);
+for(const names of [['Unknown','Unknown'],['Tập 1','Volume 2'],['Tập 1–3','Volumes 1–3'],['Tập 0','Volume 0'],['Tập 1.5','Vol. 1.5'],['Tập 1 đến 3','Volume 1 to 3']])assert.equal(volumeOf({...base,api:{...base.api,name_vi:names[0],name_en:names[1]}}),null);
+assert.equal(filterVolumes([{...volume(2),stockQuantity:0}],{query:'',direction:'asc',inStock:true}).length,0);
+assert.equal(figureGroups([{...products.find(p=>p.categoryKey==='figures'),api:{...products.find(p=>p.categoryKey==='figures').api,series:null}}],{query:'',category:'all',series:'all'})[0].slug,'unclassified');
+console.log('PASS actual catalog: 7 manga series/14 volumes, 5 figure groups/6 products, 0 accessories; numeric volume/search/unknown/range handling and Hero selection');

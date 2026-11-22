@@ -27,6 +27,25 @@ export function ProductsProvider({ children, demoProducts }: { children: React.R
     }).catch(() => { if (!controller.signal.aborted) { setRaw([]); setStatus("error"); } });
     return () => controller.abort();
   }, [attempt]);
+  useEffect(() => {
+    if (!USE_PRODUCTS_API) return;
+    const changed = () => setAttempt(a => a + 1);
+    window.addEventListener("manga-products-updated", changed);
+    return () => window.removeEventListener("manga-products-updated", changed);
+  }, []);
+  useEffect(() => {
+    if (!USE_PRODUCTS_API) return;
+    const isAdmin = () => window.location.hash === "#admin" || window.location.hash.startsWith("#admin/");
+    let wasAdmin = isAdmin();
+    const leavingAdmin = () => {
+      const next = isAdmin();
+      if (wasAdmin && !next) { setStatus("loading"); setAttempt(a => a + 1); }
+      wasAdmin = next;
+    };
+    window.addEventListener("hashchange", leavingAdmin);
+    window.addEventListener("popstate", leavingAdmin);
+    return () => { window.removeEventListener("hashchange", leavingAdmin); window.removeEventListener("popstate", leavingAdmin); };
+  }, []);
   const products = useMemo(() => USE_PRODUCTS_API ? raw.map(p => adaptProduct(p, language)) : demoProducts, [raw, language, demoProducts]);
   return <Context.Provider value={{ products, status, retry: () => setAttempt(a => a + 1) }}>{children}</Context.Provider>;
 }
@@ -55,6 +74,11 @@ export function useProduct(id: number | null) {
     });
     return () => controller.abort();
   }, [id, attempt]);
+  useEffect(() => {
+    const changed = (event: Event) => { if ((event as CustomEvent<{ productId: number }>).detail?.productId === id) setAttempt(a => a + 1); };
+    window.addEventListener("manga-products-updated", changed);
+    return () => window.removeEventListener("manga-products-updated", changed);
+  }, [id]);
   return {
     product: result.id === id && result.raw ? adaptProduct(result.raw, language) : null,
     status: result.id === id ? result.status : "loading" as Status,

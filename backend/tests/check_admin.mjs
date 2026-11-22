@@ -72,7 +72,7 @@ try {
  await account();await evaluate("Array.from(document.querySelectorAll('.account-page button')).find(b=>b.textContent==='SIGN OUT'&&b.getClientRects().length).click()");await waitFor("!!document.querySelector('.account-page form')");
  await login(0);await evaluate("Array.from(document.querySelectorAll('.account-page button')).find(b=>b.textContent==='ADMIN ACCESS').click()");await waitFor("document.querySelector('[data-metric=active_products]')?.textContent==='23'");
  assert.equal(await evaluate("document.querySelector('[data-metric=collected_cod_vnd]').textContent"),new Intl.NumberFormat('en-US',{style:'currency',currency:'VND'}).format(0));await screenshot('admin-dashboard-desktop');
- await nav('products');await waitFor("document.querySelectorAll('.admin-table-wrap tbody tr').length>0");await button('ADD PRODUCT');
+ await nav('products');await waitFor("document.querySelectorAll('.admin-table-wrap tbody tr').length>0");await button('+ ADD PRODUCT');
  await waitFor("!!document.querySelector('[data-admin-product-form] form')");
  for(const [name,value] of Object.entries({sku,slug:'admin-gui-'+nonce,name_vi:'Sản phẩm Admin GUI',name_en:'Admin GUI Product',description_vi:'Mô tả quản trị',description_en:'Admin description',price_vnd:'50000',sale_price_vnd:'45000',stock_quantity:'3'}))await field(`[data-admin-product-form] [name=${name}]`,value);
  await waitFor("document.querySelector('[name=category_id]')?.options.length>1");

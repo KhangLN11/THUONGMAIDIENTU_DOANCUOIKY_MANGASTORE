@@ -46,7 +46,7 @@ export function parseProduct(value: unknown): ApiProduct {
     price_vnd: integer(p.price_vnd), sale_price_vnd: p.sale_price_vnd === null ? null : integer(p.sale_price_vnd),
     stock_quantity: integer(p.stock_quantity), image_url: nullableText(p.image_url), images,
     category: category ? { id: integer(category.id, 1), slug: text(category.slug), name_vi: text(category.name_vi), name_en: text(category.name_en) } : null,
-    series: series ? { id: integer(series.id, 1), slug: text(series.slug), title: text(series.title) } : null,
+    series: series ? { id: integer(series.id, 1), slug: text(series.slug), title: text(series.title), description_vi: series.description_vi === undefined ? null : nullableText(series.description_vi), description_en: series.description_en === undefined ? null : nullableText(series.description_en), is_active: series.is_active === undefined ? true : series.is_active === true } : null,
   };
 }
 

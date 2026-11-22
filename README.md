@@ -82,3 +82,19 @@ Open `http://localhost:8443/#admin` after Admin login, or Account > Admin. Manag
 ## Giai đoạn 10 — Báo cáo & Thống kê
 
 Admin mở `http://localhost:8443/#admin/reports`: KPI, biểu đồ doanh thu COD thực thu, trạng thái đơn, Top sản phẩm, danh mục và 4 loại CSV. Dùng múi giờ UTC+7; dữ liệu chỉ đọc, không migration/seed database chính. Xem [docs/API.md](docs/API.md) phần Giai đoạn 10 cho công thức, giới hạn, kết quả kiểm thử và công cụ `backend/scripts/seed_reports_demo.php` chỉ cho database mô phỏng cô lập.
+
+## Giai đoạn 11A — Quản lý ảnh & Manga Flipbook
+
+Admin Products có + THÊM SẢN PHẨM, chọn/preview ảnh ngay khi tạo, thay/xóa liên kết/đặt ảnh chính từng ảnh. File cũ được giữ để khôi phục; audit CLI chỉ đọc tại `backend/scripts/audit_product_images.php`. Startup loader là sách manga CSS 3D sáu trang, VI/EN, reduced motion, thoát khi ready/error và không lặp theo thao tác. Không migration hoặc thay 37 ảnh live. Xem [docs/API.md](docs/API.md) phần Giai đoạn 11A cho API, backup, giới hạn và kết quả kiểm thử thực tế.
+
+## Giai đoạn 11B — Khám phá catalog thật
+
+Live mode có Hero 4 manga, `#series`/`#series/<slug>` để khám phá 7 series và 14 tập, `#collections` để xem 6 figure thuộc 5 series; chưa có phụ kiện. Product Detail hiển thị màu ảnh gốc, Shop/Hero giữ editorial monochrome. Không migration hoặc đổi dữ liệu. Demo Hero/Series giữ riêng; các chức năng thương mại điện tử/Admin/Loader giữ nguyên. Xem [docs/API.md](docs/API.md) phần Giai đoạn 11B cho nguồn dữ liệu, quy tắc số tập, metadata API, screenshot trước/sau, kết quả test và giới hạn.
+
+## Giai đoạn 11C — Đính chính vị trí Hero
+
+Homepage ở Demo và Live đã khôi phục Hero Figma trắng/mascot/artwork gốc. Dynamic Manga Hero chuyển lên đầu `#series` Live, trước Series Explorer; Detail không chèn slider. Giữ toàn bộ chức năng 11B, không đổi PHP/API/MySQL. Xem [docs/API.md](docs/API.md) phần 11C và ảnh `frontend/.artifacts/11c-home-*.png` / `11c-series-*.png` để đối chiếu riêng từng trang.
+
+## Giai đoạn 11D — Navbar, Phụ kiện và About
+
+Navbar dùng chung còn 5 mục, giữ nguyên cấu trúc/style/icon; `#shop`, `#series`, `#collections`, `#about` độc lập. Figure Collections được tái sử dụng ở Phụ kiện, không còn lặp ở Series; CTA nhỏ vẫn kết nối hai trang. About song ngữ dùng asset cục bộ và giới thiệu trung thực đây là đồ án. Home/Shop/Product Card/Footer/CSS chung giữ nguyên. Xem phần 11D trong [docs/API.md](docs/API.md) cho nguyên nhân lỗi, route, kiểm thử Chrome và screenshot trước/sau 1440/900/390.

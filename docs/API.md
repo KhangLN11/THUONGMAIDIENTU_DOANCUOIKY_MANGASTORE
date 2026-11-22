@@ -610,3 +610,305 @@ Không có audit trạng thái theo thời gian: report lọc ngày tạo nhưng
 Giới hạn 366 ngày và CSV 10.000 dòng bảo vệ khối lượng đọc; chưa benchmark quy mô production lớn, chưa PDF, chưa lập lịch gửi báo cáo. Không thay đổi enum, không thêm index/migration. Snapshot live và hash source trước/sau lưu riêng ngoài webroot tại `C:/xampp/manga-store-backups/2026-11-22-reports/`. Vì chức năng chỉ đọc, rollback chỉ cần bỏ tab/API Reports; không cần rollback schema/dữ liệu.
 
 Đối chiếu baseline Giai đoạn 10 thực tế: 23 active, 8 archived, **37 bản ghi ảnh**, 0 đơn hàng. 37 ảnh đã có từ trước khi triển khai Reports và giữ nguyên cả rows/hash; khác con số 35 trong mô tả ban đầu và backup Giai đoạn 9 dùng làm clone test. Không thêm/xóa ảnh live trong giai đoạn này.
+
+
+## Giai đoạn 11A — Admin Product Images & Manga Flipbook (22/11/2026)
+
+### Phạm vi và kiểm tra trước triển khai
+
+Đã kiểm tra form AdminProducts/AdminProductForm, product-create/update, AdminRepository, AdminImageUpload, ProductImageStorage, ProductRepository, ProductsProvider/useProduct, Gallery/ProductCard, schema products/product_images và quy tắc inventory. Chức năng thêm sản phẩm, sửa metadata và upload một ảnh đã có; giai đoạn này hoàn thiện chính các luồng đó, không tạo form/API sản phẩm trùng.
+
+product_images có PK id, FK product_id -> products.id ON DELETE CASCADE, image_url, alt_vi/en, sort_order, is_primary; không có unique-primary constraint. Mọi writer ảnh qua API hiện khóa parent products trước, rồi mới đọc/ghi ảnh; dùng transaction và normalize để đúng một ảnh chính nếu có ảnh. Không thay đổi schema/enum và không migration. Stock chỉ nhập ban đầu khi tạo, sửa tồn kho vẫn qua Inventory như trước.
+
+### File mới và sửa
+
+Tạo:
+
+- backend/src/AdminImageManager.php.
+- backend/public/api/admin/image-replace.php, image-delete.php, image-primary.php.
+- backend/scripts/audit_product_images.php (CLI audit chỉ đọc, không xóa file).
+- frontend/src/admin/AdminProductImages.tsx, product-images.css.
+- frontend/src/components/loading/MangaFlipbookLoader.tsx, manga-flipbook-loader.css.
+- backend/tests/images_fixture.php, test_images.py, check_images.mjs, check_flipbook.mjs.
+
+Sửa:
+
+- backend/src/AdminImageUpload.php: reuse validator/upload hiện có, hỗ trợ replace và normalize primary; cleanup kiểm tra tham chiếu/path.
+- frontend/src/admin/AdminApp.tsx: hoàn thiện quy trình tạo kèm ảnh và dùng image manager.
+- frontend/src/admin/adminService.ts: type ảnh/primary/sort_order, ba thao tác mới và invalidation event.
+- frontend/src/hooks/useProducts.tsx: refresh catalog/detail khi có sự kiện sản phẩm thay đổi.
+- frontend/src/App.tsx: chỉ import/mount loader cạnh StoreApp trong các provider; không sửa markup customer.
+- frontend/src/i18n.tsx: nhãn nút + THÊM SẢN PHẨM, thao tác ảnh, trạng thái/validation và loader VI/EN.
+- backend/tests/check_admin.mjs: cập nhật kỳ vọng nút + ADD PRODUCT theo yêu cầu mới.
+- README và docs/API.md này.
+
+### Tạo/sửa sản phẩm và ảnh
+
+Vào `http://localhost:8443/#admin/products`, bấm **+ THÊM SẢN PHẨM**. Dùng form hiện có: SKU/slug, tên/mô tả VI/EN, category/series hiện có, giá VNĐ/sale, stock ban đầu, draft/active/archived. Unique SKU/slug, giá, số nguyên không âm và FK được PHP kiểm tra; dữ liệu input không bị reset khi API báo lỗi. Không gửi stock trong API sửa metadata.
+
+Có thể chọn ảnh đầu tiên ngay trong form, xem preview bằng blob URL và bỏ chọn. Nếu chọn ảnh: tạo sản phẩm draft trước, lưu ID vào state ngay; upload ảnh vào ID đó; chỉ sau khi ảnh thành công mới áp dụng trạng thái đã chọn. Không báo hoàn tất toàn bộ khi upload/status request lỗi. Khi lỗi từng bước, có thông báo sản phẩm draft đã tồn tại và tiếp tục trên cùng ID; không tạo lại. Version được đối chiếu để không ghi đè metadata bị đổi trong lúc upload.
+
+Nếu mất phản hồi upload, **không tự động retry**: dùng Reload gallery để kiểm tra ảnh đã lưu hay chưa. Có thể bỏ chọn file đang chờ, xem ảnh đã có rồi lưu trạng thái tiếp. Nếu thiếu ảnh trong luồng tạo kèm ảnh chưa hoàn tất, UI chặn kích hoạt khi người dùng chỉ bỏ chọn nhưng chưa lưu ảnh; vẫn có thể chủ động giữ draft/archived. Trường hợp tạo không chọn ảnh vẫn theo hành vi hiện có/placeholder; không tự gán ảnh Demo.
+
+Mỗi ảnh có thumbnail contain, ID, nhãn ảnh chính, THAY ẢNH, XÓA ẢNH, ĐẶT LÀM ẢNH CHÍNH nếu chưa là primary. Các nút nằm ngoài nội dung ảnh. Thêm ảnh hỗ trợ từng file theo backend hiện tại, có preview và trạng thái busy/success/error. Không upload batch, không drag/drop reorder.
+
+### API ảnh
+
+Các endpoint POST đều bắt buộc session Admin + CSRF. Không tin product_id/image_id nếu chưa kiểm tra quan hệ. API sản phẩm cũ không đổi đường dẫn.
+
+| Endpoint dưới /api/admin/ | Input | Kết quả |
+| --- | --- | --- |
+| image-upload.php (cũ) | multipart product_id, image; alt_vi/en tùy chọn | Nối ảnh mới cuối gallery, đặt primary nếu chưa có |
+| image-replace.php | multipart product_id, image_id, expected_image_url, image | Giữ ID, sort_order, alt và primary; đổi URL sang file mới |
+| image-delete.php | JSON product_id, image_id, expected_image_url | Xóa đúng liên kết ảnh; primary mới là primary còn lại hoặc ảnh đầu sort_order/id |
+| image-primary.php | JSON product_id, image_id, expected_image_url | Một primary duy nhất, không đổi sort_order |
+
+Upload/replace trả data gồm id, image_url, cleanup. Delete/primary trả product_id, image_id, cleanup. cleanup khi bỏ liên kết cũ có `{image_url,status:"retained_for_recovery",remaining_references}`; primary không có file bỏ liên kết nên cleanup=null. Gallery được tải lại qua Admin product.php. Customer ProductRepository vẫn trả primary và toàn bộ gallery theo sort_order rồi id như trước.
+
+ID ảnh khác sản phẩm: IMAGE_NOT_FOUND 404; URL đã thay đổi: STALE_IMAGE 409; xóa ảnh cuối của active: LAST_ACTIVE_IMAGE 409. Chỉ xóa ảnh cuối khi sản phẩm không active, hoặc thay ảnh thay vì xóa. Set-primary lặp lại an toàn. Hai request replace cùng expected URL: một thành công, request còn lại 409. Không dùng index mảng làm ID.
+
+### File và transaction
+
+Dùng validator/ProductImageStorage đã có: JPEG/PNG/WebP, tối đa 5 MiB và 8 triệu pixel cho Admin; kiểm tra finfo MIME, extension, nội dung/kích thước và dấu PHP; stage file tạm do server tạo, tên random 32 hex, exclusive create, không overwrite, không Base64 MySQL. Apache upload directory vẫn chặn thực thi PHP. XAMPP chưa có GD: không tuyên bố đã decode/re-encode đầy đủ hoặc quét antivirus.
+
+Replace: xác minh quyền/CSRF và ảnh thuộc sản phẩm; stage file mới, ghi URL trong transaction, normalize primary rồi commit. Ảnh cũ tuyệt đối không bị xóa trước khi ảnh mới lưu xong. Rollback dọn file mới chỉ khi đường dẫn thực sự thuộc root quản lý, không symlink, filename đúng định dạng và không còn record nào tham chiếu URL. Nếu không xác minh được DB/commit hoặc unlink lỗi, giữ file và log để audit thay vì xóa một ảnh có thể đã commit. Không tuyên bố filesystem có thể rollback bằng MySQL.
+
+**Chính sách bảo toàn:** replace/delete chỉ bỏ liên kết database; file cũ được giữ lại để khôi phục, kể cả còn record khác tham chiếu. Không có API tự động unlink file cũ. Vì vậy ảnh dùng chung/external path không bị xóa nhầm. Audit chỉ liệt kê file managed numeric-folder/32hex chưa được tham chiếu, bỏ qua symlink, không xóa bất kỳ file nào:
+
+```powershell
+& C:/xampp/php/php.exe backend/scripts/audit_product_images.php
+```
+
+Cần theo dõi dung lượng và đối chiếu backup trước khi quyết định dọn file thủ công. Chưa có nút garbage collection tự động. Khi process dừng bất ngờ có thể còn file staging/mồ côi; audit managed files và log/temporary-directory housekeeping giúp đối soát. Không truy cập/xóa đường dẫn do client cung cấp.
+
+### Đồng bộ storefront và cache
+
+Sau thao tác ảnh thành công, service phát `manga-products-updated` với product_id thật. Provider catalog và detail tương ứng refetch, giữ page/cart state và không tải lại toàn bộ website. Demo provider bỏ qua sự kiện, không trộn ID. Tên file mới khi replace tạo URL mới nên không dính cache ảnh cũ; không tắt caching toàn website. Không sửa ProductImage, ProductCard, Gallery markup, CSS khách hàng, banner hay hover. Tab trình duyệt khác không có realtime push; tải lại dữ liệu ở tab đó khi cần.
+
+### Manga Flipbook startup loader
+
+Component nằm trong AuthProvider/ProductsProvider, cạnh StoreApp; không tạo wrapper layout mới cho website. Sách mở có bìa/gáy, hai trang nền và sáu trang lật hai mặt; các ô truyện/speed lines CSS nguyên bản, không dùng ảnh manga có bản quyền, GIF hay dependency animation. Transform-origin ở gáy, rotateY từ phải sang trái; chu kỳ 2.1 giây, lệch pha giữa các trang, bóng nhẹ và monochrome. CSS được scope .manga-startup-loader, không sửa global CSS.
+
+Loader xuất hiện từ lần render React đầu tiên của mỗi lần khởi tạo trang. Với storefront, chờ catalog kết thúc loading (success **hoặc error**); với đường dẫn Admin ban đầu, chờ kiểm tra session kết thúc. Không chờ auth vốn không thiết yếu cho trang mua sắm. Khi ready, fade opacity 160ms rồi unmount; không có thời gian giữ giả 2 giây. Site nhanh có thể chỉ thấy loader thoáng qua. Có backstop 13 giây; product service timeout 12 giây hiện có sẽ đưa app sang error/retry. Chuyển hash nhanh kết thúc overlay, không tái hiện.
+
+Không chạy lại khi mở sản phẩm, thêm giỏ, đổi wishlist, refresh catalog sau sửa ảnh, hay thao tác Admin. React StrictMode cleanup timer/listener; component được giữ ở cùng vị trí provider để latch gone không reset theo trang. Không remount Hero, không đổi scroll position, không khóa scroll hoặc chặn tương tác trong fade. role=status/aria-live thông báo VI/EN; hình sách aria-hidden. prefers-reduced-motion tắt animation, bỏ transform sâu và transition; sách tĩnh, thoát ngay khi ready.
+
+### Kiểm thử thực tế
+
+**HTTP/PHP CLI** trên database và uploads `manga_store_images_test_20261122`/alias Apache local-only riêng:
+
+- `test_images.py` PASS: Admin/session/CSRF; SKU và slug trùng; giá/stock/FK không hợp lệ; upload/primary; replace giữ ID/order/primary; URL cũ còn truy cập được; file sai MIME/SVG/PHP/polyglot/oversize bị từ chối; inject lỗi UPDATE ảnh rollback cả DB và file mới; concurrent replace cho 200/409; xóa primary chọn fallback ổn định; chặn ảnh cuối active; archived cho phép xóa ảnh cuối; không đổi ảnh sản phẩm khác hoặc stock; audit file giữ lại chỉ đọc.
+- Hồi quy `test_admin.py`, `test_reports.py` PASS trên clone riêng: workflow/COD/inventory/ownership/CSRF và số liệu báo cáo/CSV vẫn đúng.
+
+**GUI Chrome thực tế**:
+
+- `check_images.mjs` PASS: preview/bỏ chọn ảnh; tạo kèm ảnh; lỗi duplicate giữ form; lỗi upload giữ một draft ID và tiếp tục cùng ID; upload thêm, replace, lỗi replace giữ ảnh; primary/delete/last-active; Shop và Product Detail nhận ảnh mới không reload; refresh giữ dữ liệu; VI/EN, 1440/900/390 không tràn viewport.
+- `check_flipbook.mjs` PASS: giữ request để quan sát loader thật; sáu trang có computed transform thay đổi theo frame, duration 2.1s; screenshot desktop/tablet/mobile; không reset scroll; không lặp khi đổi Shop; VI/EN; reduced motion animation=none; chuyển hash nhanh; API 503 và **timeout 12s thật** thoát loader và hiện retry. StrictMode của main.tsx vẫn bật. Đây là kiểm thử chuyển động/khung hình, chưa benchmark FPS trên thiết bị vật lý.
+- Hồi quy `check_admin.mjs`, `check_reports.mjs`, `check_demo_checkout.mjs`, `check_featured_images.mjs --demo`, `check_live_catalog.mjs` PASS. Demo checkout không gọi Order API, Featured Demo giữ nguyên; Live kiểm tra 23 detail và 37 gallery selections, VI/EN, VND, hover và ảnh không lỗi. Không uncaught JavaScript exception hoặc console error ngoài HTTP 503 cố ý giả lập cho test lỗi.
+- Build, TypeScript noEmit và PHP lint API/manager/upload/audit/fixture PASS. Cảnh báo native config loader tương lai của Vite từ trước vẫn không chặn build.
+
+Bằng chứng: frontend/.artifacts/images-api.json, images-browser.json, flipbook-browser.json; images-*.png, flipbook-*.png. Các ghi dữ liệu kiểm thử có nonce, chỉ trong clone và đã cleanup. Không thử xóa/replace ảnh catalog chính.
+
+Chạy lại test ảnh cần proxy tạm PRODUCTS_API_PROXY_TARGET=http://localhost/manga-store-images-test-20261122 và các fixture CLI dùng đúng DB_NAME=manga_store_images_test_20261122; script kiểm tra database cứng trước khi ghi. Khôi phục .env.local sau test. Loader test chỉ đọc Live catalog, không tạo user/order.
+
+### Backup, rollback và giới hạn
+
+Đã backup toàn bộ database **và uploads** tại `C:/xampp/manga-store-backups/2026-11-22-images-loader/`: before.sql, before.json, uploads/, upload-hashes.json, sources.json. Nằm ngoài Apache root. Đối chiếu sau triển khai phải giữ nguyên schema/rows cả 17 bảng và bytes toàn bộ uploads: live 23 active + 8 archived, 37 ảnh. Không migration hay ghi catalog live trong giai đoạn này.
+
+Nếu cần khôi phục một ảnh đã thay/xóa sau này: đối chiếu backup row với sản phẩm đúng, kiểm tra file retained/hash, phục hồi liên kết/primary trong transaction và refresh catalog; không chỉ đoán theo tên file. Nếu cần restore toàn bộ, import SQL vào database phục hồi riêng, copy uploads backup sang kho phục hồi riêng, kiểm chứng FK/URL/hash trước khi chuyển cấu hình. Không đè DB/uploads live có giao dịch mới khi chưa đối soát. Rollback code loader/ảnh không yêu cầu rollback schema.
+
+Giới hạn: từng file một; chưa reorder/đổi alt qua UI; không garbage-collect file cũ tự động, không realtime đa tab, không antivirus/GD reencode. Upload/create chưa có durable operation idempotency key: khi mất response phải kiểm tra gallery/SKU/ID trước khi gửi lại, không blind retry. SQL unique SKU/slug và expected_image_url tránh phần lớn thao tác trùng/stale, không thay thế đối soát kết quả chưa rõ. Không thay đổi nghiệp vụ Auth/Cart/Checkout/Reports hoặc Demo catalog.
+
+Kết quả đối chiếu cuối 11A: PASS — schema và rows/hash của cả 17 bảng không đổi; 23 active, 8 archived, 37 bản ghi ảnh; toàn bộ 39 file trong uploads giữ nguyên bytes/hash. App khách hàng đối chiếu byte khớp bản trước khi bỏ đúng import/mount loader được phép. CSS khách hàng, ProductImage/ProductRepository, Featured, Orders/Commerce và hai file Reports giữ nguyên hash. Bằng chứng: backup folder/verification.json. Proxy và VITE_USE_PRODUCTS_API=true đã được khôi phục.
+
+
+## Giai đoạn 11B — Dynamic Hero, Series Explorer, Collections & True-color (22/11/2026)
+
+### Audit và phạm vi
+
+Baseline thực tế: 23 sản phẩm active, 8 archived, 37 ảnh, 17 bảng; manga_series có 18 dòng nhưng chỉ 7 series đang có manga active. Catalog active gồm 14 manga, 3 novel và 6 figure. Sáu figure thuộc 5 series (Frieren và Fern cùng Frieren); chưa có phụ kiện active. Không ghi MySQL, không seed, không migration hoặc thay ảnh nguồn trong giai đoạn này.
+
+Source thực tế trước sửa: Home Hero là bố cục generic ENTER THE WORLD OF MANGA; VOID RUNNER/Runner 404 nằm trong trang Series cũ. Trang Series cũ trải 4 sản phẩm đầu catalog dưới section ENTER THE VOID, chưa phải explorer series/figure. Hero và trang Series Live nay lấy catalog thật; Hero/Series Demo cũ được giữ độc lập, không dùng ID MySQL. Không mở rộng Header/navigation, Footer, Auth, Cart, Checkout, Admin hoặc Reports.
+
+### File tạo/sửa
+
+Tạo frontend/src/discovery/:
+
+- catalogModel.ts: nhóm dữ liệu, nhận diện/sắp xếp/tìm tập và chọn Hero.
+- DynamicHero.tsx: carousel dữ liệu thật.
+- SeriesExplorer.tsx: Series Explorer/Detail và FigureCollections.
+- routes.ts: parse hash series/collections/product hợp lệ.
+- discovery.css: style riêng cho bốn khu vực được nâng cấp.
+
+Tạo frontend/src/components/true-color-gallery.css. Tạo test scripts: backend/tests/check_discovery_model.mjs, check_discovery.mjs, check_discovery_resilience.mjs, check_true_color.mjs, capture_discovery.mjs.
+
+Sửa App.tsx (nhánh Live Hero/Series/Collections, hash route và nguồn quay lại từ Product Detail), ProductImage.tsx (variant opt-in trueColor), i18n.tsx (VI/EN), types/product.ts và services/productService.ts (metadata series tùy chọn), hooks/useProducts.tsx (refetch chỉ đọc khi rời Admin), backend/src/ProductRepository.php (SELECT/serialize metadata có sẵn). Sửa check_live_catalog.mjs để kỳ vọng 7 Series Card thay cho 4 Product Card cũ và log đúng số gallery; check_orders.mjs thêm chờ network/form sẵn sàng và chẩn đoán không ghi mật khẩu. README và API.md được cập nhật. Không cài dependency.
+
+### API và dữ liệu
+
+Không có endpoint Series mới hoặc endpoint trùng. Dùng GET /api/products.php và GET /api/product.php?id=... hiện có, chỉ trả products.status=active. Response bổ sung vào series các field có sẵn trong schema: description_vi, description_en, is_active. Frontend vẫn đọc được response cũ thiếu các field tùy chọn này. Không trả dữ liệu tài khoản hoặc thông tin kết nối.
+
+Tất cả mô hình discovery tính từ ProductsProvider hiện có, qua productService/adapter; không HTTP trực tiếp trong JSX. Product ID, giá, stock, tên và URL ảnh giữ từ API. Series title chỉ có một trường chung trong schema, nên dùng nguyên tên chính thức đó ở cả hai ngôn ngữ; không tự tạo tên EN/VI khác. Mô tả các series manga hiện đều NULL: Detail không bịa mô tả. Hero dùng mô tả DB nếu có, nếu thiếu thì dùng câu tagline biên tập VI/EN từ cấu hình featuredManga đã có (các câu đã được người dùng cung cấp ở giai đoạn trước), không coi chúng là mô tả nhà xuất bản.
+
+### Dynamic Hero
+
+Cấu hình ưu tiên tại catalogModel.ts, theo slug đã kiểm chứng:
+
+| Thứ tự | Slug |
+| --- | --- |
+| 1 | one-piece |
+| 2 | attack-on-titan |
+| 3 | naruto |
+| 4 | dragon-ball |
+
+Tên/ảnh/count/link được lấy từ các nhóm manga active hợp lệ, không hardcode ID hoặc số lượng. Tối đa 4 slide; nếu một nhóm ưu tiên không còn sản phẩm, có thể bổ sung một nhóm manga thật khác từ catalog. Không dùng archived, figure hoặc novel làm Hero manga. Ảnh đại diện là sản phẩm có ảnh đầu tiên theo thứ tự tập tăng/ID ổn định; bình thường là tập 1. Chỉ dùng URL ảnh sản phẩm local từ API, không thêm hotlink/download/banner mới hoặc AI artwork.
+
+Hero split chữ/bìa, contain, nền tối, gradient, grayscale và lớp editorial riêng. Autoplay 6 giây, crossfade 450ms, Previous/Next, indicators và Pause/Play. Dừng khi hover, focus trong Hero, document.hidden hoặc prefers-reduced-motion; cleanup timer/listener khi unmount. Inactive slides có aria-hidden/inert, nút có nhãn VI/EN; frame cố định để không layout shift. Reduced motion không autoplay và không transition. Không gọi loader toàn màn hình khi đổi slide.
+
+Loading/error dùng ProductState và retry thật, không fallback âm thầm sang Demo. Không có series hợp lệ thì empty; không ảnh thì placeholder generic, không gán artwork sai series. File ảnh mới sau thao tác Admin có URL mới, và event refetch hiện có cập nhật data; không tắt cache toàn website.
+
+### Series Explorer và Series Detail
+
+Live routes:
+
+```text
+#series
+#series/one-piece
+#collections
+#collections/frieren-beyond-journeys-end
+#product/<ID thật từ API>
+```
+
+Header/navigation chính giữ nguyên. CTA Hero, Featured Card và Series Card mở đúng #series/<slug>. Series Detail mở volume đúng product_id. Product Detail có breadcrumb quay lại nguồn; browser Back và VI/EN giữ state tìm kiếm/sort/filter trong StoreApp theo slug. Product origin cũng được lưu theo từng history entry để không lấy ID từ vị trí mảng. Direct link Product Detail tải theo ID thật.
+
+Explorer mặc định hiển thị 7 Series Card, không phải 14 volume rời. Chỉ group source API + category.slug=manga, series tồn tại và không bị inactive. Không đưa novels/figures vào số tập. Tên series từ FK/API; ảnh đại diện theo thứ tự tập và ID ổn định; giá min/max là giá hiệu lực VNĐ từ API. Số ấn phẩm active được ghi riêng, không nói là tổng tập xuất bản.
+
+Không có volume_number trong schema. volumeOf đối chiếu tên VI/EN của sản phẩm để nhận diện Tập N, Vol. N, Volume N; chỉ chấp nhận số nguyên dương và một giá trị nhất quán. Dải/combo/omnibus, số thập phân hoặc VI/EN mâu thuẫn trả unknown, không dùng SKU/index để đoán số tập. Với dữ liệu hiện tại, cả 14 sản phẩm manga đều nhận diện nhất quán tập 1 hoặc 2. Sắp xếp bằng số (2 trước 10); unknown nằm cuối ổn định theo ID và có nhãn chưa xác định.
+
+Khi biết đủ metadata, count volume là số tập khác nhau, không nhân đôi nếu có nhiều ấn bản cùng tập. Nếu thiếu số tập, chỉ ghi số ấn phẩm thay vì giả count volume. Stock count ghi rõ số ấn phẩm còn hàng. Có disclaimer đây là catalog tại cửa hàng, không phải tổng số tập chính thức của tác phẩm.
+
+Search series dùng title + tên VI/EN của các sản phẩm liên kết; chuẩn hóa Unicode NFD, bỏ dấu và đ/Đ, không phân biệt hoa thường. Search tập nhận chính xác 1/Tập 1/Volume 1, không match nhầm 10 hoặc 21; còn lại tìm keyword tên/SKU. Có ascending/descending và checkbox còn hàng. Dùng lại ProductCard và commerce callbacks; bổ sung nút Detail/Add to Cart luôn thấy trong grid mới để dễ thao tác cảm ứng, không sửa ProductCard/Shop CSS. Hết hàng thì disable Add.
+
+### Figure & Accessories Collections
+
+Thay section ENTER THE VOID ở Live Series bằng **TỪ HƯ VÔ THÀNH HIỆN THỰ** / **FROM NOTHINGNESS TO REALITY**. Có thể mở riêng từ CTA trong Hero/Series. Chỉ nhận category.slug=figures hoặc accessories; tên và nhóm theo series FK thật. Không đoán từ tên nhân vật. Thiếu FK thì nhóm Khác/Chưa phân loại.
+
+Hiện có 5 nhóm: Frieren: Beyond Journey’s End (Frieren/Fern), My Dress-Up Darling, The Apothecary Diaries, SPY × FAMILY và Bocchi the Rock!. Figure/Accessories/All có count tính từ data; Accessories hiện 0 và empty state rõ ràng, không tạo phụ kiện giả. Search tên VI/EN/nhân vật hoặc tên series; chọn series mở collection tương ứng, giữ query/category khi xem sản phẩm rồi quay lại. Sản phẩm accessory thật thêm vào danh mục hiện có sẽ xuất hiện sau refetch mà không seed/reset app.
+
+### True-color Product Detail
+
+Nguyên nhân đã xác định: index.css đặt filter: grayscale(0.9) contrast(1.1) cho .thumbs img và .main-image img. Ngoài ra body::before là lớp grain fixed z-index 20. Không phải lỗi cần tô màu hoặc sửa file nguồn.
+
+ProductImage mặc định vẫn editorial, không thêm DOM attribute ở các vị trí cũ. Chỉ hai call-site main/thumbnail của Product Detail dùng variant=trueColor. CSS scope trong .product-page .gallery: filter none, opacity 1, mix-blend-mode normal, object-fit contain, nền trắng. Gallery riêng đặt z-index 21/isolation để ảnh không bị grain phủ; Header vẫn z-index 50. Không xóa grain/grayscale toàn trang, không thay font, frame, grid, viền, chức năng chọn thumbnail hoặc hover Shop.
+
+Chrome đã tải/audit 37 ảnh nguồn qua canvas sample 64x64, phát hiện pixel màu trong tất cả, không có file bị xác định hoàn toàn grayscale trong đợt kiểm tra này. Không có danh sách ảnh cần thay để phục hồi màu và không chỉnh sửa bất kỳ pixel/file nào. Nếu upload sau này vốn trắng đen, variant chỉ hiển thị đúng file đó, không tự phục hồi/tô màu. Kiểm thử Your Name và Frieren xác nhận main/thumbnail giữ màu, contain, không filter/opacity/blend từ ancestor, và nằm trên lớp grain.
+
+### Kiểm thử thực tế và screenshots
+
+- check_discovery_model.mjs PASS: API 23 sản phẩm; 7 nhóm manga/14 tập; 5 nhóm figure/6 sản phẩm; 0 phụ kiện; Hero priority/fallback; search bỏ dấu; numeric 1/2/10, query exact và unknown/range/decimal/mâu thuẫn; lọc stock. Case 10 và dữ liệu thiếu là object fixture trong test, không seed vào database.
+- check_discovery.mjs PASS bằng Chrome thật: 4 Hero đúng title/cover, autoplay chờ thực 6 giây, Prev/Next, pause/hover/focus/tab ẩn/reduced motion; Series/volume routing/search/sort/back; Cart/Wishlist guest; figure grouping/filter/empty; source color audit; VI/EN và 1440/900/390, CTA/title không bị cắt, không tràn ngang. Không uncaught exception hoặc console.error.
+- check_discovery_resilience.mjs PASS: cố ý trả 503 để kiểm tra error/retry và loader thoát; placeholder khi mất ảnh; unknown series không mở sản phẩm khác; response-only probes refetch volume/stock/primary-photo và restore API thật. Các probe chỉ sửa JSON trong headless browser, không cập nhật database/ảnh. Không dùng kết quả mô phỏng làm dữ liệu production.
+- check_true_color.mjs PASS cho Your Name/Frieren ở 1440/900/390: gallery trên grain, ancestor không filter/opacity/blend, ảnh contain và có màu nguồn.
+- Hồi quy thực tế: test_orders.py/test_admin.py/test_reports.py trên clone PASS; GUI check_auth/check_commerce/check_admin/check_reports/check_orders PASS. Checkout vẫn double-submit/lost-response replay/refresh, trừ-hoàn kho một lần và cô lập account. Test account-switch ban đầu gặp CSRF_INVALID khi logout quá nhanh sau request hủy/đồng bộ; helper nay chờ request nền và form tương tác sẵn sàng. Không sửa Auth hoặc bỏ CSRF; không tuyên bố đã cải thiện nghiệp vụ overlap logout với request chưa hoàn tất.
+- check_demo_checkout, check_featured_images --demo, check_live_catalog và check_flipbook PASS: Demo không gọi product/order API, Home Demo/Shop/Featured giữ nguyên; Live đủ 23 detail/37 gallery; loader không bị hỏng. Hero/Series Demo cũ giữ độc lập; true-color là thay đổi có chủ đích trong Product Detail ở cả hai chế độ.
+- Build/TypeScript noEmit/PHP lint ProductRepository PASS. Không dependency mới; cảnh báo native config loader tương lai của Vite từ trước vẫn không chặn build.
+
+Ảnh trước/sau desktop thực tế: frontend/.artifacts/11b-before-{hero,series,figures,novel,figure}.png và 11b-after-{hero,series,figures,novel,figure}.png. Ảnh responsive sau: 11b-hero/series/volumes/collections-{900,390}-vi.png; ảnh Detail true-color ở ba kích thước: 11b-true-color-CAT-...-{1440,900,390}.png. Báo cáo JSON: discovery-browser.json, discovery-resilience.json, true-color-browser.json. Có screenshot trạng thái Hero error/no-image/Series not-found. Before screenshots ở 1440px; không tuyên bố đã chụp Before ở tablet/mobile.
+
+Chạy kiểm thử read-only mới từ root bằng Node hiện có (Node 24 hỗ trợ import type-stripped TS cho test model):
+
+```powershell
+node backend/tests/check_discovery_model.mjs
+node backend/tests/check_discovery.mjs
+node backend/tests/check_discovery_resilience.mjs
+node backend/tests/check_true_color.mjs
+npm.cmd --prefix frontend run build
+./frontend/node_modules/.bin/tsc.cmd --noEmit -p frontend/tsconfig.json
+```
+
+### Bảo toàn dữ liệu và giới hạn
+
+Snapshot/source baseline tại C:/xampp/manga-store-backups/2026-11-22-discovery/ (ngoài webroot), gồm before.json, App.tsx/index.css trước chỉnh sửa, hash file bảo vệ và uploads. Các kiểm thử ghi Auth/Orders/Admin/Reports chỉ trên clone nonce-scoped được cleanup, không trên manga_store. Cấu hình .env.local/proxy được khôi phục sau test.
+
+Không migration, không sửa giá/stock/catalog, không upload/download ảnh mới. Không có Series CRUD hoặc volume_number có cấu trúc; nhận diện tập an toàn từ tên chỉ là giải pháp tương thích schema hiện tại. Series descriptions hiện thiếu nên không có mô tả dài giả. Search/filter client-side phù hợp catalog hiện tại; chưa benchmark catalog rất lớn. Autoplay/pause đã test Chrome, chưa benchmark FPS trên thiết bị vật lý. Realtime đa tab chưa triển khai; dữ liệu đổi qua Admin xuất hiện sau refetch hiện có.
+
+Nếu cần rollback giao diện, dùng bản App.tsx trước chỉnh sửa và bỏ các component/style Discovery/variant liên quan theo version control; metadata API bổ sung vẫn tương thích client cũ. Không cần restore database/schema vì phần nghiệp vụ mới chỉ đọc. Không import lại seed hoặc ghi đè uploads để rollback UI.
+
+Bổ sung 11B: ProductsProvider trong hooks/useProducts.tsx refetch công khai khi rời hash Admin về storefront, ngoài event cập nhật sản phẩm đã có. Nhờ đó archive/đổi metadata trong Admin cũng được phản ánh khi quay lại mà không sửa mã Admin hay reset app. Handler chỉ GET, Demo bỏ qua; loader latch không chạy lại. Resilience test dùng response-only fixture kiểm tra cả luồng rời Admin, không ghi catalog live.
+
+Đối chiếu cuối 11B: PASS — cả 17 bảng giữ nguyên schema/rows/hash, 23 active + 8 archived, 18 series trong DB, 37 bản ghi ảnh, toàn bộ 40 file uploads giữ nguyên bytes/hash. Header/Footer/ProductCard/Cart/Checkout/Account/Demo Hero/Demo Series giữ nguyên source; ProductPage chỉ thêm hai prop trueColor; các file Auth, Orders/Commerce, Admin/Reports và Flipbook giữ nguyên hash. Bằng chứng verification.json nằm trong backup folder discovery. VITE_USE_PRODUCTS_API=true và proxy gốc đã được khôi phục.
+
+
+## Giai đoạn 11C — Sửa vị trí Hero, khôi phục Homepage gốc (22/11/2026)
+
+Đính chính phạm vi 11B: Dynamic Manga Hero thuộc trang Bộ truyện, không thuộc Homepage. Không revert toàn bộ App/commit 11B.
+
+### Thay đổi production
+
+- App.tsx: bỏ điều kiện chỉ giữ Hero trắng ở Demo để Hero gốc hiển thị ở Home trong cả Demo và Live; chuyển đúng component DynamicHero hiện có lên trước SeriesExplorer trên landing #series Live.
+- Tạo frontend/src/discovery/series-hero-placement.css: chỉ selector con .series-hero-slot, chiều cao slider 520px desktop, 560px tablet, 740px mobile, font/bìa/padding vừa frame. Không sửa CSS của Homepage.
+
+Home JSX khớp Hero source trước 11B và Hero trong Git HEAD 47581c4 (Xay dung admin). Header/Footer/Featured và mọi section dưới Hero giữ nguyên. Asset gốc dùng lại: images.open (Unsplash photo-1763732397864-5b860bb298b0), images.shelf (photo-1709675577960-0b1e7ba55347), CharacterArt vẽ bằng DOM/CSS cùng các panel, speech bubble và animation float sẵn có. Hai URL ảnh đều được Chrome xác nhận tải thành công; không thiếu asset, không thêm ảnh hoặc dựng lại mascot.
+
+Bản dịch hiện có tiếp tục tạo tiêu đề VI BƯỚC VÀO / THẾ GIỚI CỦA / MANGA., nhãn SỐ 001 / TOKYO / TOÀN CẦU, mô tả, hai CTA và BẠN ĐÃ SẴN SÀNG?. EN vẫn dùng nội dung gốc. CTA khám phá mở trang Series; Mua ngay mở Shop. Vị trí/style/hover của CTA và CSS animation Homepage không đổi.
+
+#series Live nay theo thứ tự Header -> một DynamicHero -> CHỌN THẾ GIỚI CỦA RIÊNG BẠN -> search -> 7 Series Card và các section 11B còn lại -> Footer. Không đặt slider trong grid, không nhân đôi series. Series Detail #series/<slug> không có slider để không đẩy volume/search xuống dưới. Demo giữ Series demo độc lập như 11B, không sử dụng ID MySQL.
+
+DynamicHero.tsx, catalogModel.ts, SeriesExplorer.tsx và logic route/filters/commerce của 11B không sửa. Giữ 4 manga/cover/count/link từ API, autoplay 6s, Previous/Next/indicator, pause/hover/focus/hidden tab/reduced motion. Figure Collections và true-color gallery không đổi. Không sửa PHP, Product API, MySQL, Auth, Cart, Checkout, Admin, Reports hoặc Flipbook Loader.
+
+### Kiểm thử và screenshot thực tế
+
+- check_hero_placement.mjs mới: PASS Home và Series riêng biệt, Hero trắng/mascot/halftone/float/2 CTA/VI-EN, không slider ở Home, đúng một slider trước Explorer, 4 slide/7 card, CTA vào đúng 2 volume và không chèn Hero ở Detail. Không horizontal overflow ở 1440/900/390; kiểm tra cả 4 tiêu đề/CTA trong kích thước Series mới.
+- check_discovery.mjs và check_discovery_resilience.mjs chỉ cập nhật vị trí mở slider từ Home sang #series: PASS autoplay thực 6s, điều hướng, pause hover/focus/tab ẩn/reduced motion, Explorer/search volume/filter/back, figure, guest cart/wishlist, API loading/error/retry/placeholder và refetch. Không viết lại component slider.
+- check_true_color.mjs PASS: Your Name/Frieren và gallery 1440/900/390 giữ nguyên màu/contain/lớp trên grain.
+- GUI hồi quy check_auth, check_commerce, check_admin, check_reports, check_orders trên clone PASS. Demo check_demo_checkout/check_featured_images --demo PASS; Live check_live_catalog PASS 23 detail/37 gallery; check_flipbook PASS startup/readiness/error/timeout/reduced motion. Không uncaught JavaScript exception hoặc console.error ngoài 503 cố ý trong resilience test.
+- npm build và TypeScript noEmit PASS. Không thay PHP nên không có PHP lint mới cần thiết trong 11C. Cảnh báo cấu hình Vite native-loader tương lai là cảnh báo cũ, không làm build thất bại.
+
+Screenshot Home (không dùng ảnh Series làm bằng chứng Home): frontend/.artifacts/11c-home-{1440,900,390}-vi.png, 11c-home-390-en.png. Có thêm 11c-home-1896-vi.png ở 1896x982 để đối chiếu trực quan ảnh tham chiếu người dùng. Screenshot Series tách riêng: 11c-series-{1440,900,390}-vi.png. Báo cáo hero-placement-browser.json ghi trạng thái tải hai artwork gốc. Đối chiếu source/asset và quan sát screenshot, chưa tuyên bố pixel-diff/pixel-perfect giữa môi trường render/zoom và ảnh tham chiếu.
+
+File báo cáo/test sửa thêm: backend/tests/check_hero_placement.mjs (mới), check_discovery.mjs, check_discovery_resilience.mjs; README và API.md này. Không cài dependency.
+
+### Bảo toàn
+
+Baseline và verification tại C:/xampp/manga-store-backups/2026-11-22-hero-placement/ ngoài webroot. Đối chiếu xác nhận App chỉ khác đúng các điểm tích hợp trên; tất cả file frontend còn lại trước 11C (bao gồm index.css, i18n, slider, Explorer, Figure, gallery, Loader, Auth, Admin/Reports) giữ nguyên hash. Toàn bộ PHP/API giữ nguyên hash. Schema và rows/hash của cả 17 bảng không đổi; 23 active, 8 archived, 37 ảnh và toàn bộ 40 file uploads giữ nguyên. Các test ghi chạy trên clone có cleanup, không ghi catalog chính. .env.local được khôi phục với VITE_USE_PRODUCTS_API=true và proxy gốc.
+
+## Giai đoạn 11D — Navigation, Figure Collections và About (22/11/2026)
+
+### Audit và phạm vi
+
+Header trong App.tsx có một cấu hình links dùng cho cả desktop/mobile. Lỗi Phụ kiện do `[t("MERCHANDISE"), "shop"]`; lỗi About do `[t("ABOUT US"), "home"]`. Không phải lỗi PHP hoặc Shop. Route #collections và component FigureCollections đã tồn tại, nhưng SeriesExplorer còn render `<FigureCollections {...props} embedded />` bên dưới danh sách manga. Chưa có trang About độc lập.
+
+Chỉ sửa mapping menu: bỏ New Arrivals ở Navbar, Accessories -> collections, About -> about; nhãn EN SERIES/ACCESSORIES theo yêu cầu, VI không đổi. Giữ nguyên cấu trúc Header, logo, icons, hành vi ngôn ngữ/tài khoản/wishlist/cart/menu, sticky, hover và toàn bộ index.css. `aria-current="page"` phản ánh route hiện tại mà không thêm style active mới. Tại 900px, chiều rộng hộp flex của brand tự giải phóng khoảng 3px sau khi bỏ một mục; không chỉnh width, font, padding hoặc CSS Navbar.
+
+### Route và tái sử dụng
+
+- #home (hoặc hash rỗng): Home gốc.
+- #shop: Shop tổng hợp, không đổi bộ lọc/layout.
+- #series và #series/<slug>: Hero động/Explorer hoặc Series Detail hiện có.
+- #collections và #collections/<slug>: FigureCollections độc lập với bộ lọc thật từ API. Xóa duy nhất lần render embedded trong Series; giữ CTA Figure & Phụ kiện đã có. Thêm nút reset query/category/series, giữ logic nhóm theo metadata/foreign key. Có 6 figure / 5 series, 0 phụ kiện; chọn Accessories hiện empty state, không thêm dữ liệu giả.
+- #about: About riêng; #manifesto là alias cho CTA giới thiệu sẵn có mà không sửa Home.
+- #product/<id> chỉ dùng ID thật trong Live; account/cart/wishlist/checkout/admin giữ nguyên API và chức năng.
+
+Hash parser/điều hướng hiện có được mở rộng, không thêm router hoặc dependency. Primary navigation dùng pushState và xử lý hashchange/popstate; refresh, Back/Forward và chuyển VI/EN giữ trang. Demo vẫn có Series gốc và trang Collections dùng chính các sản phẩm Demo Figures/Accessories; không đưa ID MySQL hoặc gọi Product API vào Demo. Bộ lọc Collections đầy đủ sử dụng Live API; Demo Collections là danh sách tĩnh, không bổ sung metadata giả.
+
+### About và file
+
+Thêm frontend/src/pages/AboutPage.tsx, about.css (selector scoped .about-page, animation vào trang nhẹ, tôn trọng reduced motion). Nội dung VI/EN gồm Hero, giới thiệu đồ án, ba thế giới, tinh thần khám phá/sưu tầm/kết nối và CTA cuối trang. Tái sử dụng hai bìa /featured-manga/naruto.jpg và one-piece.jpg; không tải ảnh mới, không bịa thông tin doanh nghiệp. CTA Manga -> Series, Novel -> Shop, Figure -> Collections. Dùng Header/Footer chung; Footer không có About link cũ nên không sửa Footer.
+
+Sửa App.tsx, i18n.tsx, discovery/routes.ts, discovery/SeriesExplorer.tsx; thêm hai script backend/tests/check_navigation_before.mjs và check_navigation.mjs chỉ phục vụ Chrome; cập nhật kỳ vọng tiêu đề HIỆN THỰC trong check_discovery.mjs. README/API.md ghi nhận bàn giao. Không sửa PHP, Vite config, CSS chung, Product Card, Loader, Admin, Auth, Checkout hoặc dữ liệu Demo.
+
+### Kiểm thử thực tế
+
+- Build npm và TypeScript noEmit: PASS. Cảnh báo native config loader tương lai của Vite là cảnh báo cũ, không phải build error.
+- Chrome headless Live và Demo: PASS Navbar 5 mục VI/EN, Home Hero DOM/chiều cao Navbar/icon/logo, Shop/Collections/About riêng, deep link, refresh, Back/Forward, CTA, aria-current, Series không lặp Figure, bộ lọc/empty/reset Live. Không overflow tại 1440/900/390, không uncaught JS exception/console.error trong navigation tests.
+- check_discovery: PASS 4 slide/autoplay thực/pause/reduced motion, 7 series/14 tập, search/sort/back, Figure/Cart/Wishlist, ảnh và VI/EN. check_discovery_resilience: PASS loading/error/retry/not-found và refetch chỉ thay response kiểm thử.
+- check_true_color: PASS gallery Your Name/Frieren ở ba kích thước. check_live_catalog: PASS 23 Product Detail và 37 gallery selection, tên/mô tả/ảnh/giá VND/VI-EN, tìm kiếm và category/hover.
+- check_flipbook: PASS startup, readiness, API error/timeout, StrictMode, reduced motion, VI/EN và responsive.
+- Chrome check_auth/check_commerce/check_admin/check_reports/check_orders: PASS trên các database/kho upload test cô lập qua Apache XAMPP. Bao gồm checkout COD unpaid, double-submit/lost-response retry, history/detail/cancel, account isolation, cart persistence, Admin/Reports/CSV. Không chạy thao tác ghi trên database chính.
+- Demo check_navigation --demo và check_demo_checkout: PASS; không gọi Product/Order API để lấy catalog/đặt đơn thật. .env.local được khôi phục nguyên trạng, VITE_USE_PRODUCTS_API=true, API base /api.
+
+Screenshot riêng từng trang: frontend/.artifacts/11d-live-{home,shop,series,collections,about}-{1440,900,390}.png; tương tự 11d-demo-*.png. Navbar trước: 11d-before-home-{1440,900,390}.png; sau: 11d-live-home-*.png. Có ảnh menu mở trước/sau: 11d-before-navbar-open-{900,390}.png / 11d-live-navbar-open-{900,390}.png. 900px vẫn dùng desktop theo breakpoint gốc; 390px menu mobile. Không dùng ảnh Shop làm bằng chứng Collections. Các ảnh About/Shop/Series/Collections sau kiểm thử lưu EN; Home/Navbar so sánh VI. Báo cáo máy đọc: 11d-navigation-live.json, 11d-navigation-demo.json và 11d-preservation.json. Quan sát ảnh và đối chiếu DOM/source, không tuyên bố pixel-perfect hoặc pixel-diff toàn trang.
+
+### Bảo toàn và giới hạn
+
+Baseline riêng C:/xampp/manga-store-backups/2026-11-22-navigation-about/ gồm source hashes và snapshot MySQL chỉ đọc trước/sau. Toàn bộ schema/rows/hash của 17 bảng giống nhau; 31 sản phẩm gồm 23 active/8 archived, 37 ảnh giữ nguyên. Tất cả file PHP/backend public/uploads cũ giữ nguyên SHA-256. Home, Shop, ProductCard, Footer và CharacterArt giữ nguyên source từng byte; index.css, Hero Slider, Loader, Gallery, commerce/Auth/Admin/Reports giữ nguyên hash. Không migration, seed, dependency hoặc thay ảnh. Có thể hoàn tác riêng thay đổi frontend 11D; không cần khôi phục MySQL. Các script test cần Chrome Windows và XAMPP tại vị trí cấu hình sẵn; test ghi dữ liệu chỉ chạy trên clone đã cấu hình, không chuyển sang database chính.

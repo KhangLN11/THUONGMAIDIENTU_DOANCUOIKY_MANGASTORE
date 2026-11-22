@@ -1,0 +1,17 @@
+.product-page .gallery img[data-product-color="trueColor"] {
+  filter: none;
+  opacity: 1;
+  mix-blend-mode: normal;
+  object-fit: contain;
+  object-position: center;
+}
+.product-page .gallery .main-image:has(img[data-product-color="trueColor"]) {
+  background: #fff;
+}
+
+/* Keep only the product gallery above the existing body::before paper grain (z-index 20).
+   Header remains above it at 50; the rest of the editorial texture is untouched. */
+.product-page .gallery:has(img[data-product-color="trueColor"]) {
+ position: relative; z-index: 21; isolation: isolate;
+}
+.product-page .gallery img[data-product-color="trueColor"] { background: #fff; }

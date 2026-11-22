@@ -1,0 +1,18 @@
+/* Placement-only sizing for the Series landing page; original Home Hero CSS is untouched. */
+.series-hero-slot .hero-live { height: 520px; }
+.series-hero-slot .hero-live-slide { padding-top: 32px; padding-bottom: 78px; }
+.series-hero-slot .hero-live h1 { font-size: clamp(44px,4.5vw,68px); margin: 14px 0; }
+.series-hero-slot .hero-live-art > img { max-height: 340px; }
+@media(max-width:950px) and (min-width:601px) {
+ .series-hero-slot .hero-live { height: 560px; }
+ .series-hero-slot .hero-live-slide { padding-top: 28px; padding-bottom: 80px; }
+ .series-hero-slot .hero-live h1 { font-size: 48px; }
+ .series-hero-slot .hero-live-art > img { max-height: 330px; }
+}
+@media(max-width:600px) {
+ .series-hero-slot .hero-live { height: 740px; }
+ .series-hero-slot .hero-live-slide { grid-template-rows: auto 210px; gap: 8px; padding-top: 20px; padding-bottom: 84px; }
+ .series-hero-slot .hero-live h1 { font-size: 38px; margin: 12px 0; }
+ .series-hero-slot .hero-live-art > img { max-height: 195px; }
+ .series-hero-slot .hero-live-secondary { font-size: 11px; padding: 6px 0; }
+}

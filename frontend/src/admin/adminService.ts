@@ -16,7 +16,13 @@ export type Product = {
   status: string;
   version: string;
   image_url?: string | null;
-  images?: { id: number; image_url: string }[];
+  images?: ProductImageRecord[];
+};
+export type ProductImageRecord = {
+  id: number;
+  image_url: string;
+  is_primary: boolean;
+  sort_order: number;
 };
 export type Page<T> = {
   items: T[];
@@ -97,7 +103,12 @@ function product(v: unknown): Product {
         ? undefined
         : arr(p.images).map((v) => {
             const i = obj(v);
-            return { id: num(i.id), image_url: str(i.image_url) };
+            return {
+              id: num(i.id),
+              image_url: str(i.image_url),
+              is_primary: num(i.is_primary) === 1,
+              sort_order: num(i.sort_order),
+            };
           }),
   };
 }
@@ -216,6 +227,46 @@ export const uploadImage = async (id: number, file: File) => {
   const body = new FormData();
   body.set("product_id", String(id));
   body.set("image", file);
-  const d = obj(obj(await sessionUpload("admin/image-upload.php", body)).data);
+  const d = obj(obj(await imageRequest("admin/image-upload.php", body)).data);
+  catalogChanged(id);
   return { id: num(d.id), image_url: str(d.image_url) };
 };
+
+export const catalogChanged = (id: number) =>
+  window.dispatchEvent(new CustomEvent("manga-products-updated", { detail: { productId: id } }));
+export const replaceImage = async (id: number, image: ProductImageRecord, file: File) => {
+  const body = new FormData();
+  body.set("product_id", String(id));
+  body.set("image_id", String(image.id));
+  body.set("expected_image_url", image.image_url);
+  body.set("image", file);
+  const d = obj(obj(await imageRequest("admin/image-replace.php", body)).data);
+  catalogChanged(id);
+  return { id: num(d.id), image_url: str(d.image_url) };
+};
+export const deleteImage = async (id: number, image: ProductImageRecord) => {
+  await request("image-delete.php", {
+    product_id: id,
+    image_id: image.id,
+    expected_image_url: image.image_url,
+  });
+  catalogChanged(id);
+};
+export const primaryImage = async (id: number, image: ProductImageRecord) => {
+  await request("image-primary.php", {
+    product_id: id,
+    image_id: image.id,
+    expected_image_url: image.image_url,
+  });
+  catalogChanged(id);
+};
+
+async function imageRequest(path: string, body: FormData): Promise<unknown> {
+  try {
+    return await sessionUpload(path, body);
+  } catch (e) {
+    if (e instanceof AuthError && (e.status === 401 || e.code === "FORBIDDEN"))
+      window.dispatchEvent(new Event("manga-admin-auth-invalid"));
+    throw e;
+  }
+}

@@ -27,7 +27,7 @@ export interface ApiProduct {
   sale_price_vnd: number | null;
   stock_quantity: number;
   category: { id: number; slug: string; name_vi: string; name_en: string } | null;
-  series: { id: number; slug: string; title: string } | null;
+  series: { id: number; slug: string; title: string; description_vi?: string | null; description_en?: string | null; is_active?: boolean } | null;
   image_url: string | null;
   images?: ApiProductImage[];
 }

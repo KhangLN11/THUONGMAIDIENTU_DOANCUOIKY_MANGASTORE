@@ -1,3 +1,10 @@
+import { AboutPage } from "./pages/AboutPage";
+import "./discovery/series-hero-placement.css";
+import { DynamicHero } from "./discovery/DynamicHero";
+import { SeriesExplorer, FigureCollections } from "./discovery/SeriesExplorer";
+import { initialDiscoveryFilters, type DiscoveryFilters } from "./discovery/catalogModel";
+import { discoveryRoute } from "./discovery/routes";
+import { MangaFlipbookLoader } from "./components/loading/MangaFlipbookLoader";
 import { AdminApp } from "./admin/AdminApp";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n, useTranslateDocument } from "./i18n";
@@ -13,7 +20,7 @@ import { AccountPanel } from "./components/AccountPanel";
 import { ProductImage } from "./components/ProductImage";
 import { ProductState, ProductSkeletons } from "./components/ProductState";
 
-type Page = "wishlist" | "home" | "shop" | "product" | "series" | "cart" | "checkout" | "account";
+type Page = "about" | "wishlist" | "home" | "shop" | "product" | "series" | "collections" | "cart" | "checkout" | "account";
 
 const images = {
   shelf:
@@ -190,16 +197,15 @@ function Button({
   );
 }
 
-function Header({ go, cartCount }: { go: (p: Page, id?: number) => void; cartCount: number }) {
+function Header({ go, cartCount, activePage }: { go: (p: Page, id?: number) => void; cartCount: number; activePage: Page }) {
   const [open, setOpen] = useState(false);
   const { language, setLanguage, t } = useI18n();
   const links: [string, Page][] = [
     [t("HOME"), "home"],
     [t("SHOP"), "shop"],
-    [t("MANGA SERIES"), "series"],
-    [t("MERCHANDISE"), "shop"],
-    [t("NEW ARRIVALS"), "shop"],
-    [t("ABOUT US"), "home"],
+    [t("nav.series"), "series"],
+    [t("nav.accessories"), "collections"],
+    [t("ABOUT US"), "about"],
   ];
   return (
     <header className="site-header">
@@ -212,6 +218,7 @@ function Header({ go, cartCount }: { go: (p: Page, id?: number) => void; cartCou
         {links.map(([label, page]) => (
           <button
             key={label}
+            aria-current={activePage === page ? "page" : undefined}
             onClick={() => {
               go(page);
               setOpen(false);
@@ -743,12 +750,12 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
           <div className="thumbs" style={product ? { overflow: "auto", maxHeight: mainImageHeight, minWidth: 0 } : undefined}>
             {gallery.map((image) => (
               <button className={activeImage.id === image.id ? "active" : ""} onClick={() => setSelectedImageId(image.id)} key={image.id} aria-pressed={product ? activeImage.id === image.id : undefined} style={product ? { flexShrink: 0 } : undefined}>
-                <ProductImage src={image.image} alt={image.alt} />
+                <ProductImage src={image.image} alt={image.alt} variant="trueColor" />
               </button>
             ))}
           </div>
           <div className="main-image" ref={mainImageRef}>
-            <ProductImage src={activeImage.image} alt={product ? activeImage.alt : p.name} />
+            <ProductImage src={activeImage.image} alt={product ? activeImage.alt : p.name} variant="trueColor" />
             {!product && <span>LIMITED / 250</span>}
           </div>
         </div>
@@ -1167,17 +1174,21 @@ function Footer({ go }: { go: (p: Page, id?: number) => void }) {
 }
 
 export default function App() {
-  return <AuthProvider><ProductsProvider demoProducts={demoProducts}><StoreApp /></ProductsProvider></AuthProvider>;
+  return <AuthProvider><ProductsProvider demoProducts={demoProducts}><MangaFlipbookLoader /><StoreApp /></ProductsProvider></AuthProvider>;
 }
 
 function StoreApp() {
   const { language, t } = useI18n();
   useTranslateDocument();
-  const [page, setPage] = useState<Page>(() => window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
+  const [page, setPage] = useState<Page>(() => discoveryRoute(window.location.hash) && (USE_PRODUCTS_API || discoveryRoute(window.location.hash)!.page !== "product") ? discoveryRoute(window.location.hash)!.page : window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
   useEffect(() => {
-    const openAccount = () => { const hash = window.location.hash; if (hash === "#checkout" || hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
+    const openAccount = () => { const hash = window.location.hash;
+      const candidate=discoveryRoute(hash); const route=candidate && (USE_PRODUCTS_API || candidate.page!=="product")?candidate:null;
+      if(route){setPage(route.page);if(route.page==="series")setSelectedSeriesSlug(route.slug);if(route.page==="product"){setSelectedId(route.id);const origin=window.history.state?.mangaOrigin;setProductOrigin(typeof origin==="string"&&discoveryRoute(origin)?origin:null);}if(route.page==="collections")setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:route.slug??"all"}}));return;}
+      if(hash==="")setPage("home"); if (hash === "#checkout" || hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
     window.addEventListener("hashchange", openAccount);
-    return () => window.removeEventListener("hashchange", openAccount);
+    window.addEventListener("popstate", openAccount);
+    return () => { window.removeEventListener("hashchange", openAccount); window.removeEventListener("popstate", openAccount); };
   }, []);
   const [adminRoute, setAdminRoute] = useState(() => window.location.hash === "#admin" || window.location.hash.startsWith("#admin/"));
   useEffect(() => {
@@ -1185,8 +1196,11 @@ function StoreApp() {
     window.addEventListener("hashchange", route);
     return () => window.removeEventListener("hashchange", route);
   }, []);
+  const [selectedSeriesSlug,setSelectedSeriesSlug]=useState<string|null>(()=>discoveryRoute(window.location.hash)?.page==="series"?discoveryRoute(window.location.hash)!.slug:null);
+  const [discoveryFilters,setDiscoveryFilters]=useState<DiscoveryFilters>(()=>({...initialDiscoveryFilters,figure:{...initialDiscoveryFilters.figure,series:discoveryRoute(window.location.hash)?.page==="collections"?discoveryRoute(window.location.hash)!.slug??"all":"all"}}));
+  const [productOrigin,setProductOrigin]=useState<string|null>(null);
   const [shopSeriesSlug, setShopSeriesSlug] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(()=>USE_PRODUCTS_API?discoveryRoute(window.location.hash)?.id??null:null);
   const commerce = useCommerce();
   const catalog = useProducts();
   const { cart, wishes, setCart, toggleWish } = commerce;
@@ -1199,8 +1213,10 @@ function StoreApp() {
     return () => { if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current); };
   }, [commerce.accountKey]);
   const go = (p: Page, id?: number) => {
-    if (p === "checkout" || p === "account" || p === "wishlist" || p === "cart") window.history.replaceState(null, "", "#" + p);
-    else if (["#checkout", "#account", "#wishlist", "#cart"].includes(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    if(p==="series"){openSeries(null);return;}
+    if(p==="collections"){openFigures();return;}
+    if(USE_PRODUCTS_API&&p==="product"&&id!==undefined){const origin=page==="product"?productOrigin:window.location.hash.startsWith("#series")||window.location.hash.startsWith("#collections")?window.location.hash:null;setProductOrigin(origin);window.history.pushState({mangaOrigin:origin},"","#product/"+id);}
+    else if (p !== "product") window.history.pushState(null, "", "#" + p);
     if (p === "shop") setShopSeriesSlug(null);
     if (p === "product" && USE_PRODUCTS_API) {
       if (id === undefined) { setPage("shop"); return; }
@@ -1209,11 +1225,11 @@ function StoreApp() {
     setPage(p);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const openSeries = (slug: string) => {
-    setShopSeriesSlug(slug);
-    setPage("shop");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const openSeries = (slug: string | null) => {
+    setSelectedSeriesSlug(slug);setPage("series");window.history.pushState(null,"",slug?"#series/"+slug:"#series");window.scrollTo({top:0,behavior:"smooth"});
   };
+  const openFigures=(slug?:string)=>{setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:slug??"all"}}));setPage("collections");window.history.pushState(null,"",slug?"#collections/"+slug:"#collections");window.scrollTo({top:0,behavior:"smooth"});};
+  const returnToDiscovery=()=>{const route=productOrigin?discoveryRoute(productOrigin):null;if(route?.page==="series")openSeries(route.slug);else if(route?.page==="collections")openFigures(route.slug??(discoveryFilters.figure.series==="all"?undefined:discoveryFilters.figure.series));};
   const add = (p: Product) => {
     void commerce.add(p).then(added => {
       if (!added) return;
@@ -1229,17 +1245,21 @@ function StoreApp() {
         ? "Manga Universe — Vật phẩm từ những thế giới khác"
         : "Manga Universe — Objects From Other Worlds";
   }, [language]);
+  const renderDiscoveryProduct=(p:Product)=><div className="discovery-product-item" key={p.id} data-discovery-product={p.id}><ProductCard product={p} onOpen={()=>go("product",p.id)} onAdd={()=>add(p)} wish={wishes.includes(p.id)} onWish={()=>toggleWish(p.id)}/><div className="discovery-card-actions"><button onClick={()=>go("product",p.id)}>{t("discovery.viewProduct")}</button><button disabled={!p.stockQuantity||commerce.busy||commerce.loading} onClick={()=>add(p)}>{t("ADD TO CART")}</button></div></div>;
   if (adminRoute) return <AdminApp />;
   return (
     <div className="app">
-      {page !== "checkout" && <Header go={go} cartCount={cart.length} />}
+      {page !== "checkout" && <Header go={go} cartCount={cart.length} activePage={page === "product" ? (productOrigin?.startsWith("#series") ? "series" : productOrigin?.startsWith("#collections") ? "collections" : "shop") : page} />}
       {USE_PRODUCTS_API && commerce.loading && <p role="status">{t("commerce.loading")}</p>}
       {USE_PRODUCTS_API && commerce.error && <div role="alert"><p>{t(`commerce.error.${commerce.error}`)}</p><button onClick={() => void commerce.retry()}>{t("TRY AGAIN")}</button></div>}
       {page === "wishlist" && <Shop seriesSlug={null} wishlistOnly commercePending={commerce.loading} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "home" && <Home go={go} openSeries={openSeries} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "shop" && <Shop key={shopSeriesSlug ?? "all"} seriesSlug={shopSeriesSlug} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
-      {page === "product" && (USE_PRODUCTS_API ? <ApiProductPage id={selectedId} add={add} go={go} /> : <ProductPage add={add} go={go} />)}
-      {page === "series" && <Series go={go} />}
+      {page === "product" && (USE_PRODUCTS_API ? <>{productOrigin&&<div className="discovery-return" data-product-text><button className="discovery-breadcrumb" onClick={returnToDiscovery}>← {t(productOrigin.startsWith("#collections")?"discovery.allCollections":"discovery.backSeries")}</button></div>}<ApiProductPage id={selectedId} add={add} go={go} /></> : <ProductPage add={add} go={go} />)}
+      {page === "series" && (USE_PRODUCTS_API?<>{selectedSeriesSlug===null&&<div className="series-hero-slot" data-series-hero-slot><DynamicHero openSeries={openSeries} openFigures={()=>openFigures()}/></div>}<SeriesExplorer slug={selectedSeriesSlug} openSeries={openSeries} filters={discoveryFilters} onFilters={setDiscoveryFilters} renderProduct={renderDiscoveryProduct} openFigures={openFigures}/></>:<Series go={go}/>)}
+      {page === "collections" && USE_PRODUCTS_API && <FigureCollections filters={discoveryFilters} onFilters={setDiscoveryFilters} renderProduct={renderDiscoveryProduct} openFigures={openFigures}/>}
+      {page === "about" && <AboutPage go={go} />}
+      {page === "collections" && !USE_PRODUCTS_API && <main className="discovery-surface discovery-collections-page" data-product-text><section className="discovery-figures" data-figure-collections><div className="discovery-section-heading"><div><p className="discovery-kicker">DEMO / ANIME COLLECTIONS</p><h2>{t("discovery.reality")}</h2><p>{t("discovery.figuresIntro")}</p></div></div><div className="product-grid discovery-figure-grid">{demoProducts.filter(p => p.category === "Figures" || p.category === "Accessories").map(p => <ProductCard key={p.id} product={p} onOpen={() => go("product", p.id)} onAdd={() => add(p)} wish={wishes.includes(p.id)} onWish={() => toggleWish(p.id)} />)}</div></section></main>}
       {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} onQuantity={commerce.quantity} serverSubtotal={commerce.subtotal} lineTotals={commerce.lineTotals} busy={commerce.busy || commerce.loading} pending={commerce.loading || !!commerce.error} />}
       {page === "checkout" && (USE_PRODUCTS_API ? <ApiCheckout key={commerce.accountKey ?? "guest"} cart={cart} pending={commerce.loading} onHome={() => go("home")} onAccount={() => go("account")} onOrders={() => go("account")} onPlaced={async () => { await commerce.retry(); catalog.retry(); }} /> : <Checkout cart={cart} go={go} />)}
       {page === "account" && <Account go={go} wishes={wishes} onOrderChanged={() => { void commerce.retry(); catalog.retry(); }} />}

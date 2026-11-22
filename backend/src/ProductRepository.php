@@ -19,6 +19,7 @@ SELECT p.id, p.sku, p.slug, p.name_vi, p.name_en,
        c.id AS category_id, c.slug AS category_slug,
        c.name_vi AS category_name_vi, c.name_en AS category_name_en,
        s.id AS series_id, s.slug AS series_slug, s.title AS series_title,
+       s.description_vi AS series_description_vi, s.description_en AS series_description_en, s.is_active AS series_active,
        i.image_url
 FROM products p
 LEFT JOIN categories c ON c.id = p.category_id
@@ -102,6 +103,9 @@ SQL;
                 'id' => (int) $row['series_id'],
                 'slug' => $row['series_slug'],
                 'title' => $row['series_title'],
+                'description_vi' => $row['series_description_vi'],
+                'description_en' => $row['series_description_en'],
+                'is_active' => (bool) $row['series_active'],
             ],
             'image_url' => $row['image_url'],
         ];
