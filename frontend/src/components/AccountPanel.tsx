@@ -1,9 +1,11 @@
+import { OrdersPanel } from "./OrdersPanel";
+import { USE_PRODUCTS_API } from "../config/products";
 import { useState, type FormEvent } from "react";
 import { useI18n } from "../i18n";
 import { AuthGuard, useAuth } from "../contexts/AuthContext";
 import { AuthError, checkAdmin, register } from "../services/authService";
 
-export function AccountPanel({ onShop, onWishlist, wishes }: { onShop: () => void; onWishlist: () => void; wishes: number[] }) {
+export function AccountPanel({ onShop, onWishlist, onOrderChanged, wishes }: { onShop: () => void; onWishlist: () => void; onOrderChanged: () => void; wishes: number[] }) {
   const { t, formatDate } = useI18n();
   const { user, loading, error: sessionError, refresh, signIn, signOut } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -37,7 +39,7 @@ export function AccountPanel({ onShop, onWishlist, wishes }: { onShop: () => voi
   }
   async function verifyAdmin() {
     setBusy(true); setError(null);
-    try { await checkAdmin(); setAdminVerified(true); }
+    try { await checkAdmin(); setAdminVerified(true); window.location.hash = "#admin"; }
     catch (error) { setAdminVerified(false); setError(error instanceof AuthError ? error.code : "NETWORK_ERROR"); if (error instanceof AuthError && (error.status === 401 || error.status === 403)) await refresh(); }
     finally { setBusy(false); }
   }
@@ -75,7 +77,7 @@ export function AccountPanel({ onShop, onWishlist, wishes }: { onShop: () => voi
             <div><b>{String(wishes.length).padStart(2, "0")}</b><p>{t("SAVED OBJECTS")}</p></div>
             <div><b>—</b><p>{t("MEMBER POINTS")}</p></div>
           </div>
-          <p>{t("auth.ordersUnavailable")}</p>
+          {USE_PRODUCTS_API ? <OrdersPanel key={user.id} onChanged={onOrderChanged} /> : <p>{t("auth.ordersUnavailable")}</p>}
           {adminVerified && <AuthGuard role="admin"><p role="status">{t("auth.adminVerified")}</p></AuthGuard>}
           <button className="ink-btn ink-btn-ghost" onClick={onShop}>{t("CONTINUE COLLECTING")}</button>
           <div className="min-[761px]:hidden">

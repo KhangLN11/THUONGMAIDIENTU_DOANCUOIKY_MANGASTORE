@@ -1,0 +1,125 @@
+.admin-shell .admin-reports {
+  min-width: 0;
+}
+.admin-shell .report-intro,
+.admin-shell .report-note {
+  line-height: 1.7;
+  color: #444;
+}
+.admin-shell .report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+.admin-shell .report-filters label {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.admin-shell .report-filters button {
+  min-height: 42px;
+}
+.admin-shell .report-period {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.admin-shell .report-kpis {
+  margin-bottom: 20px;
+}
+.admin-shell .report-kpis b {
+  font-size: clamp(20px, 2.4vw, 34px);
+}
+.admin-shell .report-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.admin-shell .report-summary p {
+  margin: 0;
+}
+.admin-shell .report-summary strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.admin-shell .report-two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.admin-shell .report-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-weight: 700;
+}
+.admin-shell .report-chart {
+  margin: 16px 0;
+}
+.admin-shell .report-chart svg {
+  width: 100%;
+  display: block;
+  height: auto;
+  min-height: 140px;
+}
+.admin-shell .report-chart figcaption {
+  color: #555;
+  font-size: 12px;
+}
+.admin-shell .report-bars {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+.admin-shell .report-bar-row > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.admin-shell .report-bar-track {
+  height: 12px;
+  border: 1px solid #aaa;
+  background: #eee;
+}
+.admin-shell .report-bar-track > div {
+  height: 100%;
+  background: #222;
+}
+.admin-shell .report-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+.admin-shell .report-export label {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 160px;
+}
+.admin-shell .admin-reports summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 700;
+}
+@media (max-width: 1000px) {
+  .admin-shell .report-two-columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+@media (max-width: 640px) {
+  .admin-shell .report-summary {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .report-filters button,
+  .admin-shell .report-export button {
+    width: 100%;
+  }
+}

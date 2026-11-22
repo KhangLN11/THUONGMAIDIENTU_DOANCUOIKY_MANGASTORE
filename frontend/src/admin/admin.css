@@ -1,0 +1,322 @@
+.admin-shell {
+  --admin-line: #bdbdbd;
+  color: #111;
+  background: #f5f5f5;
+  min-height: 100vh;
+  font-family: var(--body);
+  font-size: 13px;
+}
+.admin-shell * {
+  box-sizing: border-box;
+}
+.admin-shell button,
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
+  font: inherit;
+}
+.admin-shell button {
+  cursor: pointer;
+}
+.admin-shell button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--admin-line);
+  padding: 11px;
+  background: #fff;
+  color: #111;
+}
+.admin-shell input:focus,
+.admin-shell select:focus,
+.admin-shell textarea:focus {
+  outline: 2px solid #111;
+  outline-offset: 1px;
+}
+.admin-shell label {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+}
+.admin-shell .admin-grid {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+}
+.admin-shell .admin-sidebar {
+  border-right: 2px solid #111;
+  padding: 28px 20px;
+  background: #fff;
+  min-height: 100vh;
+}
+.admin-shell .admin-brand {
+  font: 900 26px/1 var(--display);
+  margin-bottom: 30px;
+}
+.admin-shell .admin-brand b {
+  display: inline-grid;
+  place-items: center;
+  background: #111;
+  color: white;
+  width: 42px;
+  height: 42px;
+  margin-right: 8px;
+}
+.admin-shell .admin-sidebar nav {
+  display: grid;
+  gap: 6px;
+}
+.admin-shell .admin-sidebar nav button {
+  text-align: left;
+  padding: 14px;
+  border-bottom: 1px solid var(--admin-line);
+}
+.admin-shell .admin-sidebar nav button[aria-current="page"] {
+  background: #111;
+  color: #fff;
+}
+.admin-shell .admin-main {
+  min-width: 0;
+  padding: 28px;
+}
+.admin-shell .admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-bottom: 2px solid #111;
+  padding-bottom: 20px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+.admin-shell h1 {
+  font: 900 44px/1 var(--display);
+  margin: 0;
+}
+.admin-shell h2 {
+  font: 800 28px/1.1 var(--display);
+  margin: 0 0 18px;
+}
+.admin-shell h3 {
+  font: 800 20px var(--display);
+  margin: 15px 0;
+}
+.admin-shell .admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.admin-shell .admin-button {
+  padding: 10px 15px;
+  border: 1px solid #111;
+  background: #fff;
+}
+.admin-shell .admin-button.primary {
+  background: #111;
+  color: white;
+}
+.admin-shell .admin-button[aria-pressed="true"] {
+  background: #111;
+  color: white;
+}
+.admin-shell .admin-panel {
+  padding: 22px;
+  border: 1px solid #111;
+  background: #fff;
+  margin-bottom: 22px;
+  min-width: 0;
+}
+.admin-shell .admin-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+.admin-shell .admin-card {
+  background: white;
+  border: 2px solid #111;
+  padding: 24px;
+  min-width: 0;
+}
+.admin-shell .admin-card b {
+  display: block;
+  font: 900 38px var(--display);
+  margin: 15px 0;
+  overflow-wrap: anywhere;
+}
+.admin-shell .admin-toolbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(120px, 200px) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+.admin-shell .admin-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.admin-shell table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+  text-align: left;
+}
+.admin-shell th {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  border-bottom: 2px solid #111;
+  padding: 12px 9px;
+}
+.admin-shell td {
+  border-bottom: 1px solid var(--admin-line);
+  padding: 13px 9px;
+  vertical-align: middle;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+}
+.admin-shell td img {
+  width: 44px;
+  height: 60px;
+  object-fit: contain;
+  display: inline-block;
+  background: #eee;
+}
+.admin-shell .admin-tag {
+  font-size: 11px;
+  border: 1px solid #111;
+  padding: 4px 7px;
+  display: inline-block;
+}
+.admin-shell .admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.admin-shell .admin-form-grid .wide {
+  grid-column: 1/-1;
+}
+.admin-shell .admin-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.admin-shell .admin-alert {
+  padding: 15px;
+  border: 2px solid #111;
+  background: #eee;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+.admin-shell .admin-gallery {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  margin: 15px 0;
+}
+.admin-shell .admin-gallery img {
+  width: 110px;
+  height: 140px;
+  object-fit: contain;
+  border: 1px solid #aaa;
+}
+.admin-shell .admin-menu-button {
+  display: none;
+}
+.admin-shell .admin-auth {
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 70px 22px;
+}
+.admin-shell .admin-detail p {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.admin-shell .admin-note {
+  font-size: 11px;
+  color: #555;
+  margin: 12px 0;
+}
+.admin-shell .admin-caution {
+  font-weight: 700;
+}
+.admin-shell .admin-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.admin-shell .admin-check input {
+  width: auto;
+  margin-top: 3px;
+}
+@media (max-width: 900px) {
+  .admin-shell .admin-grid {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .admin-shell .admin-main {
+    padding: 20px;
+  }
+  .admin-shell .admin-toolbar {
+    grid-template-columns: 1fr 150px;
+  }
+  .admin-shell .admin-toolbar > button {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 640px) {
+  .admin-shell .admin-grid {
+    display: block;
+  }
+  .admin-shell .admin-sidebar {
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 2px solid #111;
+    padding: 16px;
+  }
+  .admin-shell .admin-brand {
+    margin-bottom: 10px;
+    font-size: 22px;
+  }
+  .admin-shell .admin-sidebar nav {
+    display: none;
+  }
+  .admin-shell .admin-sidebar.open nav {
+    display: grid;
+  }
+  .admin-shell .admin-menu-button {
+    display: inline-block;
+  }
+  .admin-shell .admin-main {
+    padding: 16px;
+  }
+  .admin-shell h1 {
+    font-size: 34px;
+  }
+  .admin-shell .admin-form-grid,
+  .admin-shell .admin-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .admin-shell .admin-toolbar > button {
+    grid-column: auto;
+  }
+  .admin-shell .admin-panel {
+    padding: 16px;
+  }
+  .admin-shell .admin-topbar {
+    align-items: flex-start;
+  }
+  .admin-shell .admin-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-shell .admin-card {
+    padding: 15px;
+  }
+  .admin-shell .admin-card b {
+    font-size: 28px;
+  }
+}

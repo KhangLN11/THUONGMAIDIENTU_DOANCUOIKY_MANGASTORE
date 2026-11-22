@@ -74,3 +74,11 @@ Không được khẳng định frontend đã build/SQL đã import thành công
 - Backend SQL dùng prepared statements (PDO), mã hóa mật khẩu bằng `password_hash`/`password_verify`.
 - Không commit thông tin kết nối DB hoặc tài khoản thực.
 - Chỉ để frontend gọi API sau khi so sánh snapshot giao diện trước/sau.
+
+## Admin Dashboard - Phase 9
+
+Open `http://localhost:8443/#admin` after Admin login, or Account > Admin. Manage orders, actual COD receipts, products, images and inventory; customer data is read-only. No migration or customer redesign. Create an Admin with `backend/scripts/manage_admin.ps1` (hidden password prompt). See [Phase 9 API, tests and recovery](docs/API.md#phase-9---admin-dashboard-2026-11-22). Earlier notes about missing Admin functionality are historical.
+
+## Giai đoạn 10 — Báo cáo & Thống kê
+
+Admin mở `http://localhost:8443/#admin/reports`: KPI, biểu đồ doanh thu COD thực thu, trạng thái đơn, Top sản phẩm, danh mục và 4 loại CSV. Dùng múi giờ UTC+7; dữ liệu chỉ đọc, không migration/seed database chính. Xem [docs/API.md](docs/API.md) phần Giai đoạn 10 cho công thức, giới hạn, kết quả kiểm thử và công cụ `backend/scripts/seed_reports_demo.php` chỉ cho database mô phỏng cô lập.

@@ -131,3 +131,12 @@ Dashboard Admin, quản lý user trên web, xác minh email, quên/đổi mật 
 ## Cập nhật Giai đoạn 7 (20/11/2026)
 
 Cart/Wishlist theo user đã được triển khai, tái sử dụng Auth::requireUser, CSRF và transport sessionRequest. Phần giới hạn giỏ hàng ở kết quả Giai đoạn 6 phía trên là lịch sử; trạng thái hiện tại và các giới hạn guest merge được ghi trong [API.md – Giai đoạn 7](API.md#giai-đoạn-7--shopping-cart-và-wishlist-mysql-20112026). Đơn hàng/checkout/thanh toán vẫn chưa triển khai.
+
+
+## Cập nhật Giai đoạn 8 (20/11/2026)
+
+Checkout COD và Order History/Detail/Cancel đã triển khai bằng session/CSRF hiện có; thanh toán mới vẫn pending/unpaid. Các dòng “chưa có đơn hàng/checkout” phía trên là lịch sử giai đoạn trước. Xem mục Giai đoạn 8 – Bước B trong [API.md](API.md) để biết migration đã áp dụng, idempotency, test cô lập và hướng dẫn demo/khôi phục.
+
+## Phase 9 Admin update
+
+Admin Dashboard is available at `/#admin`, using existing session, CSRF and PHP requireAdmin checks. Account verifies backend privileges before entry; every Admin endpoint independently checks role. Invalid/revoked sessions hide Admin data. No public role-grant endpoint or default account was added. Use existing manage_admin.ps1 CLI to create/promote an Admin. See docs/API.md Phase 9 for HTTP/CLI/GUI results and limitations.

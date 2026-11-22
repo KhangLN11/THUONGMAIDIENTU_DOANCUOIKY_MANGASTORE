@@ -73,3 +73,19 @@ export async function sessionRequest(path: string, body?: unknown): Promise<unkn
   } catch (error) { if (error instanceof AuthError) throw error; throw new AuthError("NETWORK_ERROR"); }
   finally { window.clearTimeout(timeout); }
 }
+
+/** Admin raster upload shares the existing in-memory CSRF token and HttpOnly session. */
+export async function sessionUpload(path: string, body: FormData): Promise<unknown> {
+  if (!csrfToken) await getSession();
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(`${base}/${path}`, { method: "POST", credentials: "same-origin", headers: { "X-CSRF-Token": csrfToken }, body, signal: controller.signal });
+    const value: unknown = await response.json();
+    if (!record(value)) throw new AuthError("INVALID_RESPONSE");
+    if (record(value.meta) && typeof value.meta.csrf_token === "string") csrfToken = value.meta.csrf_token;
+    if (!response.ok || value.success !== true) throw new AuthError(record(value.error) && typeof value.error.code === "string" ? value.error.code : "REQUEST_FAILED", response.status);
+    return value;
+  } catch (error) { if (error instanceof AuthError) throw error; throw new AuthError("NETWORK_ERROR"); }
+  finally { window.clearTimeout(timeout); }
+}

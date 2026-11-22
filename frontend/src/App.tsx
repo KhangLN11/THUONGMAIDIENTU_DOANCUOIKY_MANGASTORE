@@ -1,3 +1,4 @@
+import { AdminApp } from "./admin/AdminApp";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n, useTranslateDocument } from "./i18n";
 import type { Product } from "./types/product";
@@ -5,6 +6,7 @@ import { USE_PRODUCTS_API } from "./config/products";
 import { localizeProduct } from "./adapters/productAdapter";
 import { ProductsProvider, useProducts, useProduct } from "./hooks/useProducts";
 import { featuredManga } from "./config/featuredManga";
+import { ApiCheckout } from "./components/ApiCheckout";
 import { useCommerce } from "./hooks/useCommerce";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AccountPanel } from "./components/AccountPanel";
@@ -1003,8 +1005,8 @@ function Cart({
               <p>TOTAL</p>
               <b>{formatCurrency(total)}</b>
             </div>
-            <Button disabled={USE_PRODUCTS_API} onClick={() => go("checkout")}>PROCEED TO CHECKOUT</Button>
-            {USE_PRODUCTS_API && <p role="note">{t("Cart preview only. Ordering and payment are not available yet.")}</p>}
+            <Button disabled={busy || pending} onClick={() => go("checkout")}>PROCEED TO CHECKOUT</Button>
+            {USE_PRODUCTS_API && <p role="note">{t("order.codPending")}</p>}
             <small>SECURE CHECKOUT / AUTHENTICITY GUARANTEED</small>
           </aside>
         </div>
@@ -1101,8 +1103,8 @@ function Checkout({ cart, go }: { cart: Product[]; go: (p: Page, id?: number) =>
   );
 }
 
-function Account({ go, wishes }: { go: (p: Page, id?: number) => void; wishes: number[] }) {
-  return <AccountPanel onShop={() => go("shop")} onWishlist={() => go("wishlist")} wishes={wishes} />;
+function Account({ go, wishes, onOrderChanged }: { go: (p: Page, id?: number) => void; wishes: number[]; onOrderChanged: () => void }) {
+  return <AccountPanel onShop={() => go("shop")} onWishlist={() => go("wishlist")} onOrderChanged={onOrderChanged} wishes={wishes} />;
 }
 
 function Footer({ go }: { go: (p: Page, id?: number) => void }) {
@@ -1171,15 +1173,22 @@ export default function App() {
 function StoreApp() {
   const { language, t } = useI18n();
   useTranslateDocument();
-  const [page, setPage] = useState<Page>(() => window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
+  const [page, setPage] = useState<Page>(() => window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
   useEffect(() => {
-    const openAccount = () => { const hash = window.location.hash; if (hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
+    const openAccount = () => { const hash = window.location.hash; if (hash === "#checkout" || hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
     window.addEventListener("hashchange", openAccount);
     return () => window.removeEventListener("hashchange", openAccount);
+  }, []);
+  const [adminRoute, setAdminRoute] = useState(() => window.location.hash === "#admin" || window.location.hash.startsWith("#admin/"));
+  useEffect(() => {
+    const route = () => setAdminRoute(window.location.hash === "#admin" || window.location.hash.startsWith("#admin/"));
+    window.addEventListener("hashchange", route);
+    return () => window.removeEventListener("hashchange", route);
   }, []);
   const [shopSeriesSlug, setShopSeriesSlug] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const commerce = useCommerce();
+  const catalog = useProducts();
   const { cart, wishes, setCart, toggleWish } = commerce;
   const [toast, setToast] = useState("");
   const toastOwner = useRef(commerce.accountKey);
@@ -1190,8 +1199,8 @@ function StoreApp() {
     return () => { if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current); };
   }, [commerce.accountKey]);
   const go = (p: Page, id?: number) => {
-    if (p === "account" || p === "wishlist" || p === "cart") window.history.replaceState(null, "", "#" + p);
-    else if (["#account", "#wishlist", "#cart"].includes(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (p === "checkout" || p === "account" || p === "wishlist" || p === "cart") window.history.replaceState(null, "", "#" + p);
+    else if (["#checkout", "#account", "#wishlist", "#cart"].includes(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     if (p === "shop") setShopSeriesSlug(null);
     if (p === "product" && USE_PRODUCTS_API) {
       if (id === undefined) { setPage("shop"); return; }
@@ -1220,6 +1229,7 @@ function StoreApp() {
         ? "Manga Universe — Vật phẩm từ những thế giới khác"
         : "Manga Universe — Objects From Other Worlds";
   }, [language]);
+  if (adminRoute) return <AdminApp />;
   return (
     <div className="app">
       {page !== "checkout" && <Header go={go} cartCount={cart.length} />}
@@ -1231,8 +1241,8 @@ function StoreApp() {
       {page === "product" && (USE_PRODUCTS_API ? <ApiProductPage id={selectedId} add={add} go={go} /> : <ProductPage add={add} go={go} />)}
       {page === "series" && <Series go={go} />}
       {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} onQuantity={commerce.quantity} serverSubtotal={commerce.subtotal} lineTotals={commerce.lineTotals} busy={commerce.busy || commerce.loading} pending={commerce.loading || !!commerce.error} />}
-      {page === "checkout" && <Checkout cart={cart} go={go} />}
-      {page === "account" && <Account go={go} wishes={wishes} />}
+      {page === "checkout" && (USE_PRODUCTS_API ? <ApiCheckout key={commerce.accountKey ?? "guest"} cart={cart} pending={commerce.loading} onHome={() => go("home")} onAccount={() => go("account")} onOrders={() => go("account")} onPlaced={async () => { await commerce.retry(); catalog.retry(); }} /> : <Checkout cart={cart} go={go} />)}
+      {page === "account" && <Account go={go} wishes={wishes} onOrderChanged={() => { void commerce.retry(); catalog.retry(); }} />}
       {page !== "checkout" && <Footer go={go} />}
       {toast && toastOwner.current === commerce.accountKey && (
         <div className="toast">

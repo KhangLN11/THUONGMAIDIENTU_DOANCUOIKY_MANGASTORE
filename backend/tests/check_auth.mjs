@@ -106,7 +106,9 @@ try {
   await reload();await language('en');await account();
   await waitFor("Array.from(document.querySelectorAll('.account-layout aside button')).some(b=>b.textContent==='ADMIN ACCESS')");
   await evaluate("Array.from(document.querySelectorAll('.account-layout aside button')).find(b=>b.textContent==='ADMIN ACCESS').click()");
-  await waitFor("Array.from(document.querySelectorAll('.account-page [role=status]')).some(e=>e.textContent.includes('Admin access verified by the server'))");
+  await waitFor("!!document.querySelector('.admin-shell [data-metric=active_products]')");
+  await evaluate("window.location.hash='#account'");
+  await waitFor("document.querySelector('.account-layout aside h3')?.textContent==='Người Dùng GUI'");
   await screenshot('auth-admin-desktop');
   await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   assert(await evaluate('document.documentElement.scrollWidth<=innerWidth'));

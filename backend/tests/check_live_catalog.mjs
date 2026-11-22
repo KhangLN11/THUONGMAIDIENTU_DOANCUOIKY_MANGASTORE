@@ -138,7 +138,7 @@ try {
   await language('vi');
   await waitFor(`document.querySelector('.cart-row h3')?.textContent===${JSON.stringify(cartProduct.name_vi)}`);
   assert((await evaluate("document.querySelector('.cart-row').textContent")).includes('85.000'));
-  assert(await evaluate("document.querySelector('.summary .ink-btn').disabled"));
+  assert.equal(await evaluate("document.querySelector('.summary .ink-btn').disabled"),false);
   report.cart='item retained while navigating all products and switching languages; checkout disabled';
   await language('en');
   await navigate('shop');
