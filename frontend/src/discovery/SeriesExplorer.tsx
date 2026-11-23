@@ -16,6 +16,8 @@ import {
   type SeriesGroup,
 } from "./catalogModel";
 import "./discovery.css";
+import "./editorial-ui.css";
+import { EditorialTitle } from "./EditorialTitle";
 type Common = {
   filters: DiscoveryFilters;
   onFilters: (value: DiscoveryFilters) => void;
@@ -142,7 +144,7 @@ export function SeriesExplorer({
         <>
           <section className="discovery-header">
             <p className="discovery-kicker">MANGA UNIVERSE / {t("discovery.seriesFile")}</p>
-            <h1>{t("discovery.chooseWorld")}</h1>
+            <h1><EditorialTitle text={t("discovery.chooseWorld")} viWords={3} enWords={1}/></h1>
             <p>{t("discovery.seriesIntro")}</p>
             <div className="discovery-facts">
               <span>
@@ -221,7 +223,7 @@ export function FigureCollections({
       <div className="discovery-section-heading">
         <div>
           <p className="discovery-kicker">FIGURES / ANIME COLLECTIONS</p>
-          <h2>{t("discovery.reality")}</h2>
+          <h2><EditorialTitle text={t("discovery.reality")} viWords={3} enWords={2}/></h2>
           <p>{t("discovery.figuresIntro")}</p>
         </div>
         {f.series !== "all" && (
@@ -291,7 +293,7 @@ export function FigureCollections({
         <>
           <div className="discovery-figure-groups">
             {groups.map((g) => (
-              <section key={g.slug} className="discovery-figure-group" data-figure-group={g.slug}>
+              <section key={g.slug} className="discovery-figure-group" data-collection-size={g.products.length} data-figure-group={g.slug}>
                 <div className="discovery-group-heading">
                   <h3>{title(g)}</h3>
                   <button

@@ -10,10 +10,12 @@
 .about-page h2,
 .about-page h3 {
   font-family: var(--display);
+  font-weight: 900;
   text-transform: uppercase;
 }
 .about-page h1 {
-  font-size: clamp(52px, 7vw, 108px);
+  font-size: clamp(48px, 6.2vw, 96px);
+  letter-spacing: -0.035em;
   line-height: 1.02;
   max-width: 900px;
   position: relative;
@@ -24,29 +26,28 @@
   color: #fff;
 }
 .about-page h2 {
-  font-size: clamp(32px, 4vw, 56px);
-  line-height: 1.08;
+  font: var(--editorial-section);
+  letter-spacing: -0.025em;
   margin-bottom: 28px;
 }
 .about-page h3 {
-  font-size: 30px;
-  line-height: 1.1;
+  font: var(--editorial-card);
   margin-bottom: 20px;
 }
 .about-page p {
-  line-height: 1.8;
-  max-width: 760px;
+  font: 400 15px/1.8 var(--body);
+  max-width: 66ch;
 }
 .about-page .about-kicker {
-  font-size: 11px;
-  letter-spacing: 0.15em;
+  font: 700 10px/1.6 var(--body);
+  letter-spacing: 0.16em;
   margin-bottom: 28px;
 }
 .about-page .about-hero {
   position: relative;
   overflow: hidden;
-  min-height: 540px;
-  padding-right: 30%;
+  min-height: 520px;
+  padding-right: 34%;
   background: radial-gradient(#ddd 0.7px, transparent 0.7px) 0 0/9px 9px;
 }
 .about-page .about-intro {
@@ -99,8 +100,9 @@
   white-space: normal;
 }
 .about-page .about-number {
-  font-size: 12px;
-  margin-bottom: 35px;
+  font: 700 10px/1.6 var(--body);
+  letter-spacing: 0.16em;
+  margin-bottom: 28px;
 }
 .about-page .about-ending {
   background: #eee;
@@ -137,7 +139,10 @@
     width: 35%;
   }
   .about-page .about-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .about-page .about-grid article:last-child {
+    grid-column: span 2;
   }
 }
 @media (max-width: 600px) {
@@ -156,5 +161,11 @@
   }
   .about-page article {
     padding: 24px;
+  }
+  .about-page .about-grid {
+    grid-template-columns: 1fr;
+  }
+  .about-page .about-grid article:last-child {
+    grid-column: auto;
   }
 }

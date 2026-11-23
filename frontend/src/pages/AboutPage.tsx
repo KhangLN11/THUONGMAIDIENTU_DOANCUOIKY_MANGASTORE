@@ -1,4 +1,5 @@
 import { useI18n } from "../i18n";
+import "../discovery/editorial-ui.css";
 import "./about.css";
 
 type Destination = "series" | "shop" | "collections";
@@ -38,7 +39,8 @@ export function AboutPage({ go }: { go: (page: Destination) => void }) {
               <h3>{t(`about.${world.key}`)}</h3>
               <p>{t(`about.${world.key}Text`)}</p>
               <button className="ink-btn" onClick={() => go(world.page)}>
-                {t(`about.${world.cta}`)} ↗
+                <span>{t(`about.${world.cta}`)}</span>
+                <span aria-hidden="true">↗</span>
               </button>
             </article>
           ))}
@@ -59,10 +61,12 @@ export function AboutPage({ go }: { go: (page: Destination) => void }) {
         <h2>{t("about.next")}</h2>
         <div>
           <button className="ink-btn" onClick={() => go("series")}>
-            {t("about.seriesCta")} ↗
+            <span>{t("about.seriesCta")}</span>
+            <span aria-hidden="true">↗</span>
           </button>
-          <button className="ink-btn" onClick={() => go("shop")}>
-            {t("about.shopCta")} ↗
+          <button className="ink-btn ink-btn-ghost" onClick={() => go("shop")}>
+            <span>{t("about.shopCta")}</span>
+            <span aria-hidden="true">↗</span>
           </button>
         </div>
       </section>

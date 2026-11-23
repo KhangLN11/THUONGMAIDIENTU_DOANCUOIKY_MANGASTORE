@@ -912,3 +912,47 @@ Screenshot riêng từng trang: frontend/.artifacts/11d-live-{home,shop,series,c
 ### Bảo toàn và giới hạn
 
 Baseline riêng C:/xampp/manga-store-backups/2026-11-22-navigation-about/ gồm source hashes và snapshot MySQL chỉ đọc trước/sau. Toàn bộ schema/rows/hash của 17 bảng giống nhau; 31 sản phẩm gồm 23 active/8 archived, 37 ảnh giữ nguyên. Tất cả file PHP/backend public/uploads cũ giữ nguyên SHA-256. Home, Shop, ProductCard, Footer và CharacterArt giữ nguyên source từng byte; index.css, Hero Slider, Loader, Gallery, commerce/Auth/Admin/Reports giữ nguyên hash. Không migration, seed, dependency hoặc thay ảnh. Có thể hoàn tác riêng thay đổi frontend 11D; không cần khôi phục MySQL. Các script test cần Chrome Windows và XAMPP tại vị trí cấu hình sẵn; test ghi dữ liệu chỉ chạy trên clone đã cấu hình, không chuyển sang database chính.
+
+## Giai đoạn 11E — Typography, layout và About CTA (22/11/2026)
+
+### Audit Home bằng Chrome trước sửa
+
+Không đoán font hoặc tải font mới. Source index.css dùng --display = Barlow Condensed, Arial Narrow, sans-serif; --body = Inter, sans-serif. Font có sẵn qua Google Fonts import hiện tại. Chrome CSS.getPlatformFontsForNode xác nhận glyph thực từ BarlowCondensed-Black/BlackItalic và Inter-Medium; Noto Sans JP chỉ phục vụ chữ Nhật trang trí gốc.
+
+Ở 1440px: Home h1 weight 900, size 120.96px, line-height 90.72px, tracking -6.6528px, font-stretch 100%; chữ outline em italic/stroke 2px. Hero lede dùng Inter 500, 12px/21.6px, uppercase/tracking .6px. SectionTitle dùng Barlow Condensed 900, clamp55–102px/0.74, tracking -.045em; eyebrow Inter 700/10px, tracking .22em. Product title dùng display 700/20px, giữ clamp hai dòng hiện hành. CTA dùng Inter 700/11px, tracking 1.1px, min-height50px, padding ngang22px, border1px; hover dịch lên2px trong250ms, lớp nền xoay trượt450ms. Border card gốc2px, editorial divider1–2px. Home dùng breakpoint1024/760px; các trang discovery có breakpoint riêng đã tồn tại. Chi tiết computed properties/font glyphs/DOM baseline trong 11e-before.json.
+
+### Lỗi CTA đã tái hiện và sửa
+
+Trước sửa, About render nhãn và ↗ là text nodes trực tiếp của button .ink-btn. Pseudo-element ::before tuyệt đối, z-index auto được vẽ trên text nodes khi trượt vào. Quy tắc gốc `.ink-btn > * { z-index:1 }` chỉ áp dụng cho phần tử con, nên không bảo vệ chữ trực tiếp. Home dùng component Button với wrapper phần tử nên không mắc lỗi này. Chuột CDP thực sự hover đã tái hiện nút xám mất cả chữ/mũi tên; không phải do file ảnh, mix-blend-mode hoặc đổi màu chữ.
+
+AboutPage bọc nhãn và mũi tên trong hai span, arrow aria-hidden. Scoped `.about-page .ink-btn` tạo isolation, foreground position relative/z-index1; ::before z-index0/pointer-events none. Giữ nguyên kiểu trượt xoay và hover dịch lên của Home; không tắt hover. Focus-visible có outline2px/offset5px, pressed hạ về vị trí gốc; nút Shop cuối trang dùng ghost secondary trắng/đen đúng style có sẵn. Chữ dài được wrap/padding dọc, min-height50px, không khóa height làm cắt chữ. Reduced motion tôn trọng quy tắc global sẵn có (transition chỉ0.01ms), không thêm chuyển động ép buộc.
+
+### Typography và layout scoped
+
+Thêm discovery/editorial-ui.css, chỉ match .discovery-surface/.discovery-collections-page/.about-page, không :root hoặc selector toàn cục mới. Tái sử dụng --display/--body/--black. Display900 clamp44–88px/1.02, section900 clamp32–56px/1.08, card800 clamp26–34px/1.12, body Inter15px/1.75–1.8, eyebrow Inter700/10px tracking.16em, button Inter700/11px. Dùng leading rộng hơn Home cho dấu VI và tên dài, không sao chép leading cực chặt của Hero sang mọi heading.
+
+EditorialTitle giữ nguyên nguyên văn bản dịch, chia dòng solid/outline cho Series và Collections, stroke1.2px/italic. Không đổi i18n.tsx. Series Card giữ cover contain, cover280px/230px ở màn nhỏ, copy flex/CTA cuối card, tên đọc đầy đủ, typography cấp card; 390px chuyển1 cột để tên dài dễ đọc. Không đổi route/search/sort/data. Dynamic Hero/logic autoplay không sửa.
+
+Collections dùng grid3 cột desktop: nhóm1 Figure chiếm1 cột và chỉ1 ô sản phẩm, nhóm nhiều Figure chiếm2 cột. Tablet2 cột/nhóm tự co, mobile1 cột; ảnh310px contain, không kéo giãn/crop đầu chân. Chỉ trong Collections, ghi đè inline two-line clamp của Product Card bằng display/overflow/line-clamp scoped !important để đọc đủ tên; không sửa component ProductCard. Tăng độ đọc metadata, ổn định khoảng cách và phân cấp secondary View Detail / primary Add to Cart / text links. Group/search/category/series/stock/price/Wishlist/Cart callbacks giữ nguyên.
+
+About giữ nguyên nội dung và asset. Bổ sung weight900 cho display/section, weight800 cho card thay việc chỉ khai báo family khiến heading mảnh. Hero max96px, leading1.02, text width/padding và collage cân đối; section64px desktop/40px mobile, body max66ch. World/value grid3 cột desktop,2+1 span tablet,1 cột mobile. CSS animation vào trang cũ/reduced-motion giữ nguyên.
+
+File production sửa: frontend/src/pages/AboutPage.tsx, pages/about.css, discovery/SeriesExplorer.tsx. File thêm: discovery/EditorialTitle.tsx, discovery/editorial-ui.css. Thêm backend/tests/check_typography.mjs; check_admin.mjs chỉ thêm350ms chờ logout/account-sync trước đổi tài khoản trong harness. Không sửa Auth ứng dụng để xử lý timeout của thao tác script quá nhanh. README/API.md cập nhật bàn giao.
+
+### Kiểm thử Chrome thực tế
+
+- check_typography trước/sau: screenshot Home/Shop/Series/Collections/About ở1440/900/390; audit computed CSS/glyph font; foreground/pseudo-element; hover bằng Input.dispatchMouseEvent, không dùng force-state giả lập CSS.
+- Cả5 CTA About: mouse hover/press/release/click mở đúng route. Tab qua bàn phím xác nhận :focus-visible; screenshot focus; touchStart/touchEnd ở390px mở Series. Reduced-motion xác nhận transition gần0 theo quy tắc global. Không nút About disabled thực tế để kiểm thử trạng thái đó.
+-18 tổ hợp Series/Collections/About × VI/EN ×1440/900/390: heading không bị clip/tràn; glyph từ Barlow hiện có, không fallback ngoài ý muốn; Figure contain và tải ảnh đúng. Các ảnh chụp đã được quan sát, không tuyên bố pixel-perfect.
+- DOM Home/Shop/Navbar/Footer trước/sau giống nhau; computed style Home giống nhau. Phép so sánh chiều cao normal line-height cho phép sai số1px do thời điểm font/rasterization; các thuộc tính font, stroke, màu, spacing, border và transition đối chiếu chính xác. Không tuyên bố pixel-diff toàn trang có animation.
+- check_discovery PASS Hero/autoplay/pause/reduced-motion, series/volume search/sort/back, Figure và guest Cart/Wishlist; check_discovery_resilience PASS error/loading/retry/refetch; check_true_color PASS gallery gốc tại ba kích thước; check_flipbook PASS readiness/error/timeout/StrictMode/reduced-motion.
+- check_auth, check_commerce PASS Chrome trên clone; check_admin sau khoảng chờ ổn định harness PASS; check_reports và check_orders PASS trên clone XAMPP/MariaDB, gồm CSV, checkout COD unpaid/idempotency/lost-response/history/detail/cancel. Test Admin lượt đầu timeout khi script logout/login tức thì; không thay code Auth/backend. Các thao tác ghi chỉ chạy trên database/kho ảnh test cô lập.
+- check_navigation --demo và check_demo_checkout PASS, Demo không gọi Product/Order API thật; cấu hình được khôi phục VITE_USE_PRODUCTS_API=true, base /api. Không thay dữ liệu React Demo.
+
+Ảnh đối chiếu: frontend/.artifacts/11e-{before,after}-{home,shop,series,collections,about}-{1440,900,390}.png. Riêng hover lỗi/sau sửa: 11e-before-about-button-hover.png / 11e-after-about-button-hover.png; trạng thái thường tương ứng *-button-normal.png; focus 11e-after-about-button-focus.png; từng CTA pressed 11e-after-about-cta-{0..4}-active.png. Series viewport đầu là slider không bị sửa; phần Explorer/Card sau sửa có ảnh riêng 11e-after-series-content-{width}-{vi,en}.png. Tương tự collections/about-content. Audit máy đọc: 11e-before.json, 11e-after.json (18 tổ hợp + interactions), 11e-preservation.json.
+
+### Bảo toàn
+
+Baseline ngoài webroot C:/xampp/manga-store-backups/2026-11-22-typography/. Snapshot read-only trước/sau: toàn bộ schema/rows/hash17 bảng giống nhau,31 sản phẩm (23 active/8 archived),37 ảnh không đổi. Các file PHP/API và backend/public/uploads cũ giữ nguyên SHA-256. App.tsx giữ nguyên toàn bộ byte (bao gồm Home/Navbar/Shop/Footer/ProductCard/commerce integration); index.css, i18n, services/hooks, Hero Slider, Loader, Auth/Admin/Reports và Gallery giữ nguyên hash. Không API mới, migration, seed, thay giá/tồn kho/ảnh, cài font hoặc dependency. Có thể rollback riêng3 file production đã sửa và bỏ2 file mới; không cần phục hồi database.
+
+Kết quả cuối 11E: npm run build và TypeScript --noEmit PASS sau thay đổi cuối. check_navigation Live PASS sau khôi phục cấu hình, không JavaScript exception/console.error. Cảnh báo Vite native-loader tương lai là cảnh báo có sẵn, không sửa config ngoài phạm vi. Không chạy PHP lint mới vì không sửa PHP. Typography mobile390 dùng heading42px cho Series/Collections; không ép cùng một cỡ cho mọi heading. Tóm tắt kết quả: frontend/.artifacts/11e-tests.json.

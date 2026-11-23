@@ -70,6 +70,8 @@ try {
  await evaluate("window.location.hash='#admin'");await waitFor("document.querySelector('.admin-auth [role=alert]')?.textContent.includes('Sign in')");assert.equal(await evaluate("!!document.querySelector('.admin-main')"),false);
  await login(1);await evaluate("window.location.hash='#admin'");await waitFor("document.querySelector('.admin-auth [role=alert]')?.textContent.includes('permission')");assert.equal(await evaluate("fetch('/api/admin/dashboard.php').then(r=>r.status)"),403);
  await account();await evaluate("Array.from(document.querySelectorAll('.account-page button')).find(b=>b.textContent==='SIGN OUT'&&b.getClientRects().length).click()");await waitFor("!!document.querySelector('.account-page form')");
+ // Wait for logout/account-sync requests before the scripted account switch (human typing normally provides this gap).
+ await pause(350);
  await login(0);await evaluate("Array.from(document.querySelectorAll('.account-page button')).find(b=>b.textContent==='ADMIN ACCESS').click()");await waitFor("document.querySelector('[data-metric=active_products]')?.textContent==='23'");
  assert.equal(await evaluate("document.querySelector('[data-metric=collected_cod_vnd]').textContent"),new Intl.NumberFormat('en-US',{style:'currency',currency:'VND'}).format(0));await screenshot('admin-dashboard-desktop');
  await nav('products');await waitFor("document.querySelectorAll('.admin-table-wrap tbody tr').length>0");await button('+ ADD PRODUCT');

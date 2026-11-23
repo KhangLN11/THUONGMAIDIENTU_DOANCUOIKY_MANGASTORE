@@ -1,0 +1,245 @@
+/* Only the three editorial pages: no Home, Shop, navigation or global tokens. */
+.discovery-surface,
+.about-page {
+  --editorial-rule: 1px solid var(--black);
+  --editorial-display: 900 clamp(44px, 6.2vw, 88px)/1.02 var(--display);
+  --editorial-section: 900 clamp(32px, 4vw, 56px)/1.08 var(--display);
+  --editorial-card: 800 clamp(26px, 2.3vw, 34px)/1.12 var(--display);
+  font-family: var(--body);
+}
+.discovery-surface .editorial-outline {
+  display: block;
+  color: transparent;
+  -webkit-text-stroke: 1.2px currentColor;
+  -webkit-text-stroke-color: var(--black);
+  font-style: italic;
+}
+.discovery-surface .discovery-header h1,
+.discovery-collections-page .discovery-section-heading h2 {
+  font: var(--editorial-display);
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  overflow-wrap: normal;
+  margin: 20px 0 24px;
+}
+.discovery-surface .discovery-header {
+  padding-top: 8px;
+  padding-bottom: 28px;
+}
+.discovery-surface .discovery-kicker,
+.about-page .about-kicker {
+  font: 700 10px/1.6 var(--body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.discovery-surface .discovery-header > p:not(.discovery-kicker),
+.discovery-collections-page .discovery-section-heading > div > p:not(.discovery-kicker) {
+  font: 400 15px/1.75 var(--body);
+  max-width: 660px;
+}
+.discovery-surface .discovery-series-card {
+  display: flex;
+  flex-direction: column;
+}
+.discovery-surface .discovery-series-cover {
+  width: 100%;
+  height: 280px;
+  flex-shrink: 0;
+  padding: 22px;
+}
+.discovery-surface .discovery-series-card-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  padding: 22px;
+}
+.discovery-surface .discovery-series-card h2 {
+  font: var(--editorial-card);
+  text-transform: uppercase;
+  overflow-wrap: normal;
+  margin: 8px 0 18px;
+  min-height: 2.24em;
+}
+.discovery-surface .discovery-series-card-copy p {
+  font: 500 12px/1.6 var(--body);
+  letter-spacing: 0.02em;
+}
+.discovery-surface .discovery-series-card-copy > span {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: var(--editorial-rule);
+  width: 100%;
+  font: 700 11px/1.5 var(--body);
+  letter-spacing: 0.06em;
+}
+.discovery-surface .discovery-figure-groups {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px;
+}
+.discovery-surface .discovery-figure-group {
+  border: var(--editorial-rule);
+  padding: 20px;
+}
+.discovery-surface .discovery-figure-group:not([data-collection-size="1"]) {
+  grid-column: span 2;
+}
+.discovery-surface .discovery-figure-group[data-collection-size="1"] .discovery-figure-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.discovery-surface .discovery-group-heading {
+  min-height: 76px;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  align-items: start;
+}
+.discovery-surface .discovery-group-heading h3 {
+  font: var(--editorial-card);
+  max-width: 100%;
+  overflow-wrap: normal;
+  text-transform: uppercase;
+}
+.discovery-surface .discovery-group-heading button {
+  font-size: 11px;
+  padding: 0;
+  min-height: 28px;
+}
+.discovery-collections-page .product-img {
+  height: 310px;
+  background: #eee;
+}
+.discovery-collections-page .product-img > img {
+  object-fit: contain;
+  object-position: center;
+}
+.discovery-collections-page .product-meta {
+  padding: 18px 0 0;
+}
+.discovery-collections-page .product-meta h3 {
+  font: 700 24px/1.16 var(--display);
+  min-height: 2.32em;
+  height: auto;
+  /* Override the shared card inline two-line clamp only in Collections. */
+  display: block !important;
+  overflow: visible !important;
+  -webkit-line-clamp: unset !important;
+}
+.discovery-collections-page .product-meta p {
+  font: 600 10px/1.5 var(--body);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.discovery-collections-page .discovery-card-actions {
+  gap: 10px;
+  margin-top: 18px;
+}
+.discovery-surface .discovery-card-actions button {
+  font: 700 11px/1.5 var(--body);
+  min-height: 48px;
+  padding: 12px 8px;
+  letter-spacing: 0.04em;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    transform 0.2s;
+}
+.discovery-surface .discovery-card-actions button:not(:disabled):hover {
+  background: #eee;
+  transform: translateY(-2px);
+}
+.discovery-surface .discovery-card-actions button:last-child:not(:disabled):hover {
+  background: #404040;
+  color: #fff;
+}
+.discovery-surface .discovery-text-button {
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.discovery-surface .discovery-text-button:hover {
+  color: #555;
+  border-color: #000;
+}
+.about-page .ink-btn {
+  isolation: isolate;
+  min-height: 50px;
+  padding: 14px 22px;
+  gap: 20px;
+  line-height: 1.5;
+}
+.about-page .ink-btn::before {
+  z-index: 0;
+  pointer-events: none;
+}
+.about-page .ink-btn > span {
+  position: relative;
+  z-index: 1;
+}
+.about-page .ink-btn:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 5px;
+}
+.about-page .ink-btn:focus-visible::before {
+  transform: translateX(0) rotate(14deg);
+}
+.about-page .ink-btn-ghost:focus-visible {
+  color: #fff;
+}
+.about-page .ink-btn:active {
+  transform: translateY(0);
+}
+.about-page .ink-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 1100px) {
+  .discovery-surface .discovery-figure-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .discovery-surface .discovery-figure-group:not([data-collection-size="1"]) {
+    grid-column: auto;
+  }
+  .discovery-surface .discovery-figure-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .discovery-surface .discovery-figure-groups {
+    grid-template-columns: 1fr;
+  }
+  .discovery-surface .discovery-series-card-copy {
+    padding: 16px;
+  }
+  .discovery-surface .discovery-series-cover {
+    height: 230px;
+    padding: 18px;
+  }
+  .discovery-surface .discovery-series-card h2 {
+    font-size: 26px;
+  }
+}
+@media (max-width: 400px) {
+  .discovery-surface .discovery-series-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .discovery-surface .discovery-header h1,
+  .discovery-collections-page .discovery-section-heading h2 {
+    font-size: 42px;
+    letter-spacing: -0.025em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-page .ink-btn,
+  .about-page .ink-btn::before,
+  .discovery-surface .discovery-card-actions button,
+  .discovery-surface .discovery-text-button {
+    transition: none;
+  }
+  .about-page .ink-btn:hover,
+  .discovery-surface .discovery-card-actions button:hover {
+    transform: none;
+  }
+}

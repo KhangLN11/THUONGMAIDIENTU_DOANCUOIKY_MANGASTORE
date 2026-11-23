@@ -98,3 +98,7 @@ Homepage ở Demo và Live đã khôi phục Hero Figma trắng/mascot/artwork g
 ## Giai đoạn 11D — Navbar, Phụ kiện và About
 
 Navbar dùng chung còn 5 mục, giữ nguyên cấu trúc/style/icon; `#shop`, `#series`, `#collections`, `#about` độc lập. Figure Collections được tái sử dụng ở Phụ kiện, không còn lặp ở Series; CTA nhỏ vẫn kết nối hai trang. About song ngữ dùng asset cục bộ và giới thiệu trung thực đây là đồ án. Home/Shop/Product Card/Footer/CSS chung giữ nguyên. Xem phần 11D trong [docs/API.md](docs/API.md) cho nguyên nhân lỗi, route, kiểm thử Chrome và screenshot trước/sau 1440/900/390.
+
+## Giai đoạn 11E — Typography & CTA scoped
+
+Series, Collections và About dùng lại Barlow Condensed/Inter từ Home, có hierarchy display/section/card/metadata. About CTA giữ hiệu ứng nền nhưng chữ/mũi tên nằm trên overlay; hỗ trợ hover, focus-visible, touch và reduced motion. Collections gọn hơn theo số figure mỗi nhóm; không đổi dữ liệu hoặc card dùng chung. Không sửa App.tsx, index.css, Navbar, Home, Shop, Footer hoặc backend. Xem [docs/API.md](docs/API.md) phần 11E và screenshot `frontend/.artifacts/11e-*` cho audit computed font, trước/sau và kiểm thử thực tế.
