@@ -1,4 +1,6 @@
-import { useEffect, useState, type DependencyList, type FormEvent } from "react";
+import { AdminSeriesDialog } from "./AdminSeriesDialog";
+import "./admin-products.css";
+import { useEffect, useRef, useState, type DependencyList, type FormEvent } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../i18n";
 import { AuthError, checkAdmin } from "../services/authService";
@@ -552,15 +554,39 @@ function AdminOrders() {
 }
 function AdminProducts() {
   const { t, language, formatCurrency } = useI18n();
-  const [q, setQ] = useState(""),
-    [category, setCategory] = useState(""),
-    [page, setPage] = useState(1),
+  const [filters, setFilters] = useState({
+    q: "",
+    category_id: "",
+    series_id: "",
+    status: "",
+    sort: "updated",
+    low: "0",
+    page_size: "20",
+  });
+  const [page, setPage] = useState(1),
     [selected, setSelected] = useState<api.Product | null>(null),
     [editing, setEditing] = useState(false),
-    [error, setError] = useState<string | null>(null);
-  const query = "?" + new URLSearchParams({ q, category_id: category, page: String(page) });
-  const r = useLoad(() => api.getProducts(query), [query]);
-  const meta = useLoad(api.getMetadata, []);
+    [error, setError] = useState<string | null>(null),
+    [changing, setChanging] = useState(false);
+  const query = "?" + new URLSearchParams({ ...filters, page: String(page), language });
+  const r = useLoad(() => api.getProductCatalog(query), [query]),
+    meta = useLoad(api.getMetadata, []);
+  const filter = (key: keyof typeof filters, value: string) => {
+    setFilters((f) => ({ ...f, [key]: value }));
+    setPage(1);
+  };
+  const reset = () => {
+    setFilters({
+      q: "",
+      category_id: "",
+      series_id: "",
+      status: "",
+      sort: "updated",
+      low: "0",
+      page_size: "20",
+    });
+    setPage(1);
+  };
   async function edit(id: number) {
     setError(null);
     try {
@@ -571,26 +597,38 @@ function AdminProducts() {
     }
   }
   async function archive(p: api.Product) {
-    if (!window.confirm(t("admin.confirmArchive"))) return;
+    if (changing || !window.confirm(t("admin.confirmArchive"))) return;
+    setChanging(true);
+    setError(null);
     try {
       await api.archiveProduct(p, p.status === "archived" ? "active" : "archived");
+      api.catalogChanged(p.id);
       r.reload();
     } catch (e) {
       setError(code(e));
+    } finally {
+      setChanging(false);
     }
   }
-  return editing ? (
-    <AdminProductForm
-      key={selected?.id ?? "new"}
-      product={selected}
-      onClose={() => {
-        setEditing(false);
-        r.reload();
-      }}
-    />
-  ) : (
-    <section className="admin-panel">
-      <div className="admin-actions">
+  if (editing)
+    return (
+      <AdminProductForm
+        key={selected?.id ?? "new"}
+        product={selected}
+        onClose={() => {
+          setEditing(false);
+          r.reload();
+          meta.reload();
+        }}
+      />
+    );
+  return (
+    <section className="admin-panel admin-products-page" data-admin-products>
+      <div className="admin-product-heading">
+        <div>
+          <h2>{t("products.manage")}</h2>
+          <p>{t("products.intro")}</p>
+        </div>
         <button
           className="admin-button primary"
           onClick={() => {
@@ -601,27 +639,32 @@ function AdminProducts() {
           {t("admin.addProduct")}
         </button>
       </div>
-      <div className="admin-toolbar">
+      {r.data && (
+        <div className="admin-product-overview">
+          {(["total", "active", "archived", "draft"] as const).map((k) => (
+            <div key={k}>
+              <span>{t("products.count." + k)}</span>
+              <strong data-product-count={k}>{r.data!.overview[k]}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="admin-product-filters">
         <label>
           {t("admin.searchProduct")}
           <input
             name="product_search"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
+            maxLength={100}
+            value={filters.q}
+            onChange={(e) => filter("q", e.target.value)}
           />
         </label>
         <label>
           {t("admin.category")}
           <select
             name="category_filter"
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setPage(1);
-            }}
+            value={filters.category_id}
+            onChange={(e) => filter("category_id", e.target.value)}
           >
             <option value="">{t("All")}</option>
             {meta.data?.categories.map((c) => (
@@ -631,9 +674,78 @@ function AdminProducts() {
             ))}
           </select>
         </label>
-        <button className="admin-button" onClick={r.reload}>
-          {t("admin.refresh")}
-        </button>
+        <label>
+          {t("admin.series")}
+          <select
+            name="series_filter"
+            value={filters.series_id}
+            onChange={(e) => filter("series_id", e.target.value)}
+          >
+            <option value="">{t("All")}</option>
+            {meta.data?.series.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("admin.status")}
+          <select
+            name="product_status_filter"
+            value={filters.status}
+            onChange={(e) => filter("status", e.target.value)}
+          >
+            <option value="">{t("All")}</option>
+            {["active", "archived", "draft"].map((k) => (
+              <option key={k} value={k}>
+                {t("admin.state." + k)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("products.sort")}
+          <select
+            name="product_sort"
+            value={filters.sort}
+            onChange={(e) => filter("sort", e.target.value)}
+          >
+            {["updated", "name", "price_asc", "price_desc", "stock_asc", "stock_desc"].map((k) => (
+              <option key={k} value={k}>
+                {t("products.sort." + k)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("products.pageSize")}
+          <select
+            name="product_page_size"
+            value={filters.page_size}
+            onChange={(e) => filter("page_size", e.target.value)}
+          >
+            {[10, 20, 50].map((n) => (
+              <option key={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <label className="admin-product-low">
+          <input
+            type="checkbox"
+            checked={filters.low === "1"}
+            onChange={(e) => filter("low", e.target.checked ? "1" : "0")}
+          />
+          {t("products.lowOnly")}
+        </label>
+        <div className="admin-actions">
+          <button className="admin-button" onClick={reset}>
+            {t("products.reset")}
+          </button>
+          <button className="admin-button" onClick={r.reload}>
+            {t("admin.refresh")}
+          </button>
+        </div>
       </div>
       <ErrorBox value={error || r.error || meta.error} retry={r.reload} />
       {r.loading ? (
@@ -641,58 +753,100 @@ function AdminProducts() {
       ) : (
         r.data && (
           <>
+            <p className="admin-product-results" role="status">
+              {r.data.meta.total} {t("products.results")}
+            </p>
             <div className="admin-table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>{t("admin.image")}</th>
-                    <th>SKU / {t("admin.productName")}</th>
-                    <th>{t("admin.price")}</th>
+                    <th>{t("admin.productName")} / SKU</th>
+                    <th>
+                      {t("admin.category")} / {t("admin.series")}
+                    </th>
+                    <th>{t("products.sellingPrice")}</th>
                     <th>{t("admin.stock")}</th>
                     <th>{t("admin.status")}</th>
                     <th>{t("admin.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {r.data.items.map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        <ProductImage src={p.image_url || PRODUCT_PLACEHOLDER} alt="" />
-                      </td>
-                      <td>
-                        {p.sku}
-                        <br />
-                        {language === "vi" ? p.name_vi : p.name_en}
-                      </td>
-                      <td>
-                        {formatCurrency(p.price_vnd, "VND")}
-                        {p.sale_price_vnd !== null && (
-                          <>
-                            <br />
-                            <small>
-                              {t("admin.salePrice")}: {formatCurrency(p.sale_price_vnd, "VND")}
-                            </small>
-                          </>
-                        )}
-                      </td>
-                      <td>{p.stock_quantity}</td>
-                      <td>{t("admin.state." + p.status)}</td>
-                      <td>
-                        <div className="admin-actions">
-                          <button className="admin-button" onClick={() => void edit(p.id)}>
-                            {t("admin.edit")}
-                          </button>
-                          <button className="admin-button" onClick={() => void archive(p)}>
-                            {t(p.status === "archived" ? "admin.activate" : "admin.archive")}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {r.data.items.map((p) => {
+                    const cat = meta.data?.categories.find((c) => c.id === p.category_id),
+                      series = meta.data?.series.find((c) => c.id === p.series_id);
+                    const sale =
+                      p.sale_price_vnd !== null &&
+                      p.sale_price_vnd > 0 &&
+                      p.sale_price_vnd <= p.price_vnd
+                        ? p.sale_price_vnd
+                        : null;
+                    return (
+                      <tr key={p.id} data-admin-product-row={p.id}>
+                        <td>
+                          <ProductImage
+                            src={p.image_url || PRODUCT_PLACEHOLDER}
+                            alt={language === "vi" ? p.name_vi : p.name_en}
+                          />
+                        </td>
+                        <td>
+                          <strong>{language === "vi" ? p.name_vi : p.name_en}</strong>
+                          <small className="admin-product-sku">{p.sku}</small>
+                        </td>
+                        <td>
+                          {cat ? (language === "vi" ? cat.name_vi : cat.name_en) : "—"}
+                          <small>{series?.title ?? "—"}</small>
+                        </td>
+                        <td>
+                          <strong>{formatCurrency(sale ?? p.price_vnd, "VND")}</strong>
+                          {sale !== null && <del>{formatCurrency(p.price_vnd, "VND")}</del>}
+                        </td>
+                        <td>
+                          <strong>{p.stock_quantity}</strong>
+                          {p.status === "active" &&
+                            p.stock_quantity <= r.data!.low_stock_threshold && (
+                              <small className="admin-product-stock-alert">
+                                {t("products.lowStock")}
+                              </small>
+                            )}
+                        </td>
+                        <td>
+                          <span className={"admin-product-status " + p.status}>
+                            {t("admin.state." + p.status)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="admin-product-row-actions">
+                            <button
+                              className="admin-button"
+                              disabled={changing}
+                              onClick={() => void edit(p.id)}
+                            >
+                              {t("admin.edit")}
+                            </button>
+                            <button
+                              className="admin-button"
+                              disabled={changing}
+                              onClick={() => void archive(p)}
+                            >
+                              {t(p.status === "archived" ? "admin.activate" : "admin.archive")}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            {!r.data.items.length && <p>{t("admin.empty")}</p>}
+            {!r.data.items.length && (
+              <div className="admin-product-empty">
+                <p>{t("admin.empty")}</p>
+                <button className="admin-button" onClick={reset}>
+                  {t("products.reset")}
+                </button>
+              </div>
+            )}
             <Pager meta={r.data.meta} onPage={setPage} />
           </>
         )
@@ -700,6 +854,7 @@ function AdminProducts() {
     </section>
   );
 }
+
 type FormFields = {
   sku: string;
   slug: string;
@@ -746,10 +901,32 @@ function AdminProductForm({
     [imageBusy, setImageBusy] = useState(false),
     [partial, setPartial] = useState(false);
   const meta = useLoad(api.getMetadata, []);
+  const [seriesOpen, setSeriesOpen] = useState(false),
+    [extraSeries, setExtraSeries] = useState<{ id: number; title: string }[]>([]),
+    [seriesNotice, setSeriesNotice] = useState("");
+  const [savedFields, setSavedFields] = useState(() => JSON.stringify(fields));
+  const productSaving = useRef(false);
+  const dirty = JSON.stringify(fields) !== savedFields || creationFile !== null;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  const close = () => {
+    if (!busy && !imageBusy && (!dirty || window.confirm(t("products.unsaved")))) onClose();
+  };
+  const seriesOptions = Array.from(
+    new Map([...(meta.data?.series ?? []), ...extraSeries].map((s) => [s.id, s])).values(),
+  );
   const set = (k: keyof FormFields, v: string) => setFields((f) => ({ ...f, [k]: v }));
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (busy || imageBusy) return;
+    if (productSaving.current || busy || imageBusy) return;
+    productSaving.current = true;
     setError(null);
     setNotice(false);
     setBusy(true);
@@ -815,9 +992,11 @@ function AdminProductForm({
       }
       setPartial(false);
       setNotice(true);
+      setSavedFields(JSON.stringify(fields));
     } catch (e) {
       setError(code(e));
     } finally {
+      productSaving.current = false;
       setBusy(false);
     }
   }
@@ -828,132 +1007,175 @@ function AdminProductForm({
     ["name_en", "admin.nameEn", 255],
   ];
   return (
-    <section className="admin-panel" data-admin-product-form>
-      <button className="admin-button" disabled={busy || imageBusy} onClick={onClose}>
+    <section className="admin-panel admin-product-editor" data-admin-product-form>
+      <button className="admin-button" disabled={busy || imageBusy} onClick={close}>
         {t("admin.back")}
       </button>
       <h2>{t(p ? "admin.editProduct" : "admin.addProduct")}</h2>
-      <ErrorBox value={error || meta.error} />
+      <div id="admin-product-error">
+        <ErrorBox value={error || meta.error} />
+      </div>
+      {seriesNotice && (
+        <p role="status" className="admin-product-series-notice">
+          {seriesNotice}
+        </p>
+      )}
       {notice && <p role="status">{t("admin.saved")}</p>}
       {partial && (
         <p className="admin-alert" data-creation-partial>
           {t("images.partial")}
         </p>
       )}
-      <form noValidate onSubmit={(e) => void save(e)}>
-        <div className="admin-form-grid">
-          {textFields.map(([k, label, max]) => (
-            <label key={k}>
-              {t(label)}
+      <form id="admin-product-editor" noValidate onSubmit={(e) => void save(e)} aria-busy={busy}>
+        <fieldset disabled={busy || imageBusy}>
+          <legend>01 / {t("products.basic")}</legend>
+          <div className="admin-form-grid">
+            {textFields.map(([k, label, max]) => (
+              <label key={k}>
+                {t(label)}
+                <input
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "admin-product-error" : undefined}
+                  name={k}
+                  maxLength={max}
+                  required
+                  value={fields[k]}
+                  disabled={busy || imageBusy}
+                  onChange={(e) => set(k, e.target.value)}
+                />
+              </label>
+            ))}
+            {(["description_vi", "description_en"] as const).map((k) => (
+              <label key={k}>
+                {t(k === "description_vi" ? "admin.descriptionVi" : "admin.descriptionEn")}
+                <textarea
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "admin-product-error" : undefined}
+                  name={k}
+                  maxLength={2000}
+                  rows={4}
+                  disabled={busy || imageBusy}
+                  value={fields[k]}
+                  onChange={(e) => set(k, e.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset disabled={busy || imageBusy}>
+          <legend>02 / {t("products.classification")}</legend>
+          <div className="admin-form-grid">
+            <label>
+              {t("admin.category")}
+              <select
+                name="category_id"
+                value={fields.category_id}
+                disabled={busy || imageBusy}
+                onChange={(e) => set("category_id", e.target.value)}
+              >
+                <option value="">{t("admin.select")}</option>
+                {meta.data?.categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {language === "vi" ? c.name_vi : c.name_en}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="admin-product-series-field">
+              <label htmlFor="product-series">
+                {t("admin.series")}
+                <select
+                  id="product-series"
+                  name="series_id"
+                  value={fields.series_id}
+                  disabled={busy || imageBusy}
+                  onChange={(e) => set("series_id", e.target.value)}
+                >
+                  <option value="">—</option>
+                  {seriesOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="admin-button"
+                onClick={() => setSeriesOpen(true)}
+                disabled={busy || imageBusy}
+              >
+                {t("products.newSeries")}
+              </button>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset disabled={busy || imageBusy}>
+          <legend>03 / {t("products.pricing")}</legend>
+          <div className="admin-form-grid">
+            <label>
+              {t("admin.price")} / VND
               <input
-                name={k}
-                maxLength={max}
-                required
-                value={fields[k]}
+                type="number"
+                step="1"
+                min="0"
+                name="price_vnd"
+                value={fields.price_vnd}
                 disabled={busy || imageBusy}
-                onChange={(e) => set(k, e.target.value)}
+                onChange={(e) => set("price_vnd", e.target.value)}
               />
             </label>
-          ))}
-          {(["description_vi", "description_en"] as const).map((k) => (
-            <label key={k}>
-              {t(k === "description_vi" ? "admin.descriptionVi" : "admin.descriptionEn")}
-              <textarea
-                name={k}
-                maxLength={2000}
-                rows={4}
+            <label>
+              {t("admin.salePrice")} / VND
+              <input
+                type="number"
+                step="1"
+                min="1"
+                name="sale_price_vnd"
+                value={fields.sale_price_vnd}
                 disabled={busy || imageBusy}
-                value={fields[k]}
-                onChange={(e) => set(k, e.target.value)}
+                onChange={(e) => set("sale_price_vnd", e.target.value)}
               />
             </label>
-          ))}
-          <label>
-            {t("admin.category")}
-            <select
-              name="category_id"
-              value={fields.category_id}
-              disabled={busy || imageBusy}
-              onChange={(e) => set("category_id", e.target.value)}
-            >
-              <option value="">{t("admin.select")}</option>
-              {meta.data?.categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {language === "vi" ? c.name_vi : c.name_en}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t("admin.series")}
-            <select
-              name="series_id"
-              value={fields.series_id}
-              disabled={busy || imageBusy}
-              onChange={(e) => set("series_id", e.target.value)}
-            >
-              <option value="">—</option>
-              {meta.data?.series.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t("admin.price")} / VND
-            <input
-              type="number"
-              step="1"
-              min="0"
-              name="price_vnd"
-              value={fields.price_vnd}
-              disabled={busy || imageBusy}
-              onChange={(e) => set("price_vnd", e.target.value)}
-            />
-          </label>
-          <label>
-            {t("admin.salePrice")} / VND
-            <input
-              type="number"
-              step="1"
-              min="1"
-              name="sale_price_vnd"
-              value={fields.sale_price_vnd}
-              disabled={busy || imageBusy}
-              onChange={(e) => set("sale_price_vnd", e.target.value)}
-            />
-          </label>
-          <label>
-            {t("admin.stock")}
-            <input
-              type="number"
-              min="0"
-              step="1"
-              name="stock_quantity"
-              value={p ? p.stock_quantity : fields.stock_quantity}
-              readOnly={!!p}
-              disabled={busy || imageBusy}
-              onChange={(e) => set("stock_quantity", e.target.value)}
-            />
-            {p && <small>{t("admin.stockSeparate")}</small>}
-          </label>
-          <label>
-            {t("admin.status")}
-            <select
-              name="product_status"
-              value={fields.status}
-              disabled={busy || imageBusy}
-              onChange={(e) => set("status", e.target.value)}
-            >
-              {["draft", "active", "archived"].map((s) => (
-                <option value={s} key={s}>
-                  {t("admin.state." + s)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+            <label>
+              {t("admin.stock")}
+              <input
+                type="number"
+                min="0"
+                step="1"
+                name="stock_quantity"
+                value={p ? p.stock_quantity : fields.stock_quantity}
+                readOnly={!!p}
+                disabled={busy || imageBusy}
+                onChange={(e) => set("stock_quantity", e.target.value)}
+              />
+              {p && (
+                <>
+                  <small>{t("admin.stockSeparate")}</small>
+                  <a href="#admin/inventory">{t("products.adjustStock")}</a>
+                </>
+              )}
+            </label>
+            <label>
+              {t("admin.status")}
+              <select
+                name="product_status"
+                value={fields.status}
+                disabled={busy || imageBusy}
+                onChange={(e) => set("status", e.target.value)}
+              >
+                {["draft", "active", "archived"].map((s) => (
+                  <option value={s} key={s}>
+                    {t("admin.state." + s)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </fieldset>
+      </form>
+      <fieldset disabled={busy || imageBusy} className="admin-product-image-section">
+        <legend>04 / {t("products.images")}</legend>
         {!product && (!p || creationFile) && (
           <div className="admin-creation-image">
             <label>
@@ -987,35 +1209,44 @@ function AdminProductForm({
             <p>{t("images.creationPolicy")}</p>
           </div>
         )}
-        <div className="admin-actions">
-          <button
-            className="admin-button primary"
-            type="submit"
-            disabled={busy || imageBusy || meta.loading}
-          >
-            {t("admin.save")}
-          </button>
-          <button
-            type="button"
-            className="admin-button"
-            disabled={busy || imageBusy}
-            onClick={onClose}
-          >
-            {t("admin.close")}
-          </button>
-        </div>
-      </form>
-      {p && (
-        <AdminProductImages
-          product={p}
-          disabled={busy}
-          onBusy={setImageBusy}
-          onChange={(fresh) => setCurrent(fresh)}
+        {p && (
+          <AdminProductImages
+            product={p}
+            disabled={busy}
+            onBusy={setImageBusy}
+            onChange={(fresh) => setCurrent(fresh)}
+          />
+        )}
+      </fieldset>
+      <div className="admin-actions">
+        <button
+          className="admin-button primary"
+          type="submit"
+          form="admin-product-editor"
+          disabled={busy || imageBusy || meta.loading}
+        >
+          {t(busy ? "products.saving" : "admin.save")}
+        </button>
+        <button type="button" className="admin-button" disabled={busy || imageBusy} onClick={close}>
+          {t("admin.close")}
+        </button>
+      </div>
+      {seriesOpen && (
+        <AdminSeriesDialog
+          onClose={() => setSeriesOpen(false)}
+          onSaved={(series, created) => {
+            setExtraSeries((list) => [...list.filter((s) => s.id !== series.id), series]);
+            set("series_id", String(series.id));
+            setSeriesNotice(t(created ? "products.seriesPersisted" : "products.seriesSelected"));
+            setSeriesOpen(false);
+            meta.reload();
+          }}
         />
       )}
     </section>
   );
 }
+
 function AdminInventory() {
   const { t, language } = useI18n();
   const [q, setQ] = useState(""),

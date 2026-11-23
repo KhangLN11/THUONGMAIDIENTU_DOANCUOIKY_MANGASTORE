@@ -956,3 +956,101 @@ File production sửa: frontend/src/pages/AboutPage.tsx, pages/about.css, discov
 Baseline ngoài webroot C:/xampp/manga-store-backups/2026-11-22-typography/. Snapshot read-only trước/sau: toàn bộ schema/rows/hash17 bảng giống nhau,31 sản phẩm (23 active/8 archived),37 ảnh không đổi. Các file PHP/API và backend/public/uploads cũ giữ nguyên SHA-256. App.tsx giữ nguyên toàn bộ byte (bao gồm Home/Navbar/Shop/Footer/ProductCard/commerce integration); index.css, i18n, services/hooks, Hero Slider, Loader, Auth/Admin/Reports và Gallery giữ nguyên hash. Không API mới, migration, seed, thay giá/tồn kho/ảnh, cài font hoặc dependency. Có thể rollback riêng3 file production đã sửa và bỏ2 file mới; không cần phục hồi database.
 
 Kết quả cuối 11E: npm run build và TypeScript --noEmit PASS sau thay đổi cuối. check_navigation Live PASS sau khôi phục cấu hình, không JavaScript exception/console.error. Cảnh báo Vite native-loader tương lai là cảnh báo có sẵn, không sửa config ngoài phạm vi. Không chạy PHP lint mới vì không sửa PHP. Typography mobile390 dùng heading42px cho Series/Collections; không ép cùng một cỡ cho mọi heading. Tóm tắt kết quả: frontend/.artifacts/11e-tests.json.
+
+## Giai đoạn 12A — Audit và migration đề xuất (23/11/2026)
+
+Chưa triển khai Bước B, chưa thay source frontend/backend hoặc dữ liệu. Theo quy trình người dùng yêu cầu, phần tạo series cần dừng để duyệt migration chống trùng tên. File đề xuất: database/migrations/002_series_title_unique.proposed.sql; CHƯA THỰC THI.
+
+### Schema và nguồn dữ liệu đã xác định
+
+01_schema.sql và snapshot MySQL thực tế đọc ở giai đoạn11E ngày22/11 đều có manga_series: id BIGINT UNSIGNED PK auto_increment; slug VARCHAR160 NOT NULL UNIQUE uq_series_slug; title VARCHAR200 NOT NULL; original_title VARCHAR200 nullable; description_vi/description_en TEXT nullable; banner_image_url VARCHAR500 nullable; is_active TINYINT1 default1. InnoDB, utf8mb4_unicode_ci. Không có unique title. Snapshot cũ có18 series; kiểm tra Python chỉ phát hiện trùng chuỗi chính xác/trim/empty/length không thấy lỗi, nhưng KHÔNG thay cho so sánh collation MySQL hoặc kiểm tra live hôm nay.
+
+Tên chính thức là title; original_title là tên nguyên tác, không phải cột name_vi/name_en. Chỉ mô tả có VI/EN. products.series_id nullable FK -> manga_series.id ON DELETE SET NULL; series dùng chung cho manga/novel/figure, không ép theo category. products có UNIQUE SKU/slug và status draft/active/archived.
+
+Form hiện dùng adminService.getMetadata -> GET /api/admin/metadata.php -> AdminRepository.metadata(), trả categories và series(id,title). Chưa có endpoint series-create. CRUD sản phẩm/save/version/foreign-key và gallery upload/replace/delete/primary đã có, sẽ tái sử dụng. POST admin qua session requireAdmin/CSRF/prepared statements và JSON validation trong admin_bootstrap.php. Không đổi Auth.
+
+ProductForm đã giữ fields, file chọn và trạng thái tạo draft/upload nhiều bước trong state. Khi sửa không gửi stock_quantity; chỉ tạo mới nhận tồn kho ban đầu và ghi inventory_movements reason initial. Giữ Inventory Management là đường điều chỉnh tồn kho hiện có, không thêm đường ghi trong form sửa.
+
+Danh sách hiện có search VI/EN/SKU, category/status hỗ trợ backend, page_size tối đa50 nhưng UI chủ yếu search/category/page; sort mặc định p.id DESC. Chưa có series filter/sort whitelist hoặc overview counts. AdminRepository.products() dùng chung Inventory nên mọi mở rộng phải giữ nguyên defaults/hành vi Inventory.
+
+### Lý do cần duyệt migration
+
+UNIQUE(slug) ngăn cùng slug, nhưng không ngăn hai request tạo cùng title với hai slug khác nhau. Kiểm tra SELECT trước INSERT hoặc chặn trong React không đủ chống race. Đề xuất thêm đúng1 unique index uq_series_title(title), không thêm cột, không sửa enum/FK/ID/rows. Chính sách tên theo collation hiện có utf8mb4_unicode_ci (không phân biệt hoa/thường và dấu); tên/slug trùng ->409, trả thông tin series phù hợp cho Admin chọn, không UPDATE bản ghi cũ.
+
+Trước thực thi: kiểm tra SHOW CREATE/INDEX live, tên rỗng/khoảng trắng đầu cuối và title trùng theo collation; nếu có xung đột phải dừng báo cáo, không tự sửa tên/xóa dữ liệu. Backup database/uploads, thử unique và concurrent inserts trên clone, kiểm tra index tương đương để skip nếu đã áp dụng. DDL MariaDB implicit commit, không giả định transaction rollback ALTER. File có postflight và rollback plan chỉ bỏ index được thêm (cũng cần duyệt), không xóa dữ liệu.
+
+### Trở ngại live
+
+Lượt kết nối23/11 trả VERSION=10.4.32-MariaDB, sau đó mất kết nối (2013); thử lại bằng lệnh chỉ đọc ngoài sandbox bị từ chối kết nối (2002/10061). Không tự khởi động lại MariaDB, không sửa cấu hình hoặc dữ liệu MySQL. Vì vậy chưa xác minh lại schema/duplicates/index trên database live hôm nay, chưa chạy migration/dry-run SQL/concurrency. Không tuyên bố API/GUI/build mới đã kiểm thử cho12A. Kết quả11E là lịch sử, không dùng làm bằng chứng test12A.
+
+### Kế hoạch triển khai sau khi duyệt và MySQL sẵn sàng
+
+1. Backup và preflight live/clone; thực thi migration được duyệt sau kiểm tra không mất rows.
+2. POST /api/admin/series-create.php qua requireAdmin/CSRF và validation; title1..200, slug1..160 đúng định dạng, original_title và mô tả optional đúng schema; catch1062 và kiểm thử requests đồng thời trên clone.
+3. Dialog ngay trong ProductForm, có label/focus trap/Escape/return focus, không nested form; giữ parent fields và File state, append series thật từ response vào metadata và chọn ID. Hiển thị rõ series đã lưu độc lập, không tự xóa khi hủy tạo sản phẩm.
+4. Scoped Admin Products content: header/overview counts thật; server-side search/category/series/status/sort whitelist/effective sale price, stable secondary ID order, page sizes10/20/50 và clamp page. Không sửa Sidebar/topbar hoặc page khác. Không dùng số23/8 hardcode.
+5. Form4 section: Basic; Category/Series; Price/Status (stock chỉ đọc khi sửa, link Inventory); Images tái sử dụng AdminProductImages. Giữ draft/upload/partial failure/version hiện có, dirty confirmation và loading/errors VI/EN.
+6. Chrome baseline/sau1440/900/390 list/create/edit/dialog/keyboard, API auth/CSRF/duplicates/concurrency, product/image CRUD và regression trên clone. PHP lint/TS/build; đối chiếu hash/storefront/API data và database chính.
+
+Trong lượt audit12A chỉ thêm file SQL proposed và cập nhật tài liệu này; chưa sửa UI/API nên phần giao diện độc lập cũng chưa được triển khai. Cần người dùng duyệt index mới trước phần tạo series theo yêu cầu Bước A/B.
+
+## 12A triển khai sau phê duyệt — 23/11/2026
+
+### Migration002: preflight, backup, thực thi và postflight
+
+Kết nối đã được người dùng bật lại, không khởi động lại hoặc đổi cấu hình MySQL. Xác minh MariaDB10.4.32; manga_series InnoDB, title VARCHAR200 NOT NULL, table/column kế thừa utf8mb4_unicode_ci; slug VARCHAR160 với UNIQUE uq_series_slug; title chưa có unique.18 series không rỗng, không có khoảng trắng đầu/cuối và không trùng theo collation. Không tự đổi tên hoặc gộp dữ liệu.
+
+Backup đầy đủ trước ALTER ở C:/xampp/manga-store-backups/2026-11-23-admin-products/: manga_store.sql (--single-transaction, routines/triggers/events/hex-blob), snapshot before.json, uploads/ và source-hashes.json. Có backup clone riêng manga_store_admin_test_20261122.sql. Đã phục hồi manga_store.sql vào database cô lập manga_store_12a_backup_verify_20261123, đối chiếu khớp schema/rows/hash của cả17 bảng; báo cáo backup-restore-check.json. Không phục hồi lên database chính.
+
+Thử index trên clone, kiểm tra xung đột tên khác slug/hoa-thường/dấu bị1062. Sau đó thực thi đúng duy nhất:
+
+```sql
+ALTER TABLE manga_store.manga_series
+    ADD UNIQUE KEY uq_series_title (title);
+```
+
+Postflight xác nhận UNIQUE BTREE uq_series_title(title) đầy đủ, không prefix; uq_series_slug còn nguyên. Schema trước/sau chỉ khác đúng index này, không đổi cột, enum, FK hoặc AUTO_INCREMENT. Rows của cả17 bảng giống nhau:18 series,31 sản phẩm (23 active/8 archived),37 ảnh. Kiểm thử HTTP title UTF-8 đủ200 ký tự và Unicode whitespace trên clone PASS. Không đưa bất kỳ series/product/user kiểm thử vào database chính. Bằng chứng final: verification.json ngoài webroot và frontend/.artifacts/12a-preservation.json.
+
+### API và chống trùng
+
+POST /api/admin/series-create.php (mới): session/requireAdmin + CSRF hiện có; JSON field allowlist. Chấp nhận title1..200, slug1..160 chỉ lowercase ASCII/số/dấu nối đơn; original_title tối đa200, description_vi/en tối đa2000 tùy chọn. Tên chính thức dùng chung; original_title là tên nguyên tác, không giả làm cột name_vi/name_en. Chuẩn hóa khoảng trắng ngoài, prepared INSERT, không UPDATE series cũ. is_active mặc định1 theo schema; không nhận role/user_id/is_active từ client.
+
+Thành công201 với success:true/data:{id,title,slug,original_title,description_vi,description_en,is_active}. Hai UNIQUE title/slug bảo đảm atomic giữa request; lỗi1062 chuyển409 DUPLICATE_SERIES (không SQL thô), kèm data.existing cho các identity xung đột. Giao diện refetch metadata và cho chọn series đã tồn tại. Frontend không dựa vào so sánh tên để tự gán ID. Trùng tên theo unicode_ci không phân biệt hoa/thường và dấu, đúng index đã duyệt. Validation422 hoặc400 cho trường không được phép;401/403/405 theo Auth hiện có. Không lưu dữ liệu frontend giả khi thất bại.
+
+GET /api/admin/metadata.php giữ nguyên, dùng lại categories/series id-title. Không tạo API danh sách series trùng chức năng.
+
+GET /api/admin/products.php mở rộng tương thích items/meta, bổ sung overview{total,active,archived,draft} toàn catalog và low_stock_threshold=5 (cùng ngưỡng nghiệp vụ Inventory/Dashboard hiện có). q tìm name_vi/name_en/SKU/slug, literal LIKE có escape %/_. Filters category_id,series_id,status,low=0/1; sort whitelist updated,name,price_asc,price_desc,stock_asc,stock_desc, language vi/en. Giá bán dùng CASE sale_price>0 và <=price, còn lại price_vnd; chỉ VND. Sort có ID phụ ổn định. page/page_size giới hạn, chọn UI10/20/50; backend clamp page về last_page khi kết quả giảm. Đếm/fetch/overview trong read transaction nhất quán. Inventory vẫn dùng API/hàm listing cũ, không thêm đường cập nhật tồn kho.
+
+CRUD/update/archive/upload API cũ tái sử dụng. AdminRepository::product chỉ đổi access private thành public static để dùng lại serializer, không đổi nội dung. Đường đọc mới tách riêng AdminProductCatalog.php; Auth/Orders/Inventory/Reports không đổi nghiệp vụ.
+
+### UI và cách demo
+
+Truy cập #admin/products bằng tài khoản Admin hiện có (tạo Admin bằng CLI cũ, không có mật khẩu mặc định).
+
+1. List có tiêu đề/mô tả/nút thêm,4 số liệu database thật, filter bar và bảng thumbnail72x96, tên nổi bật/SKU nhỏ, category/series tách riêng, giá bán/giá gốc gạch khi sale hợp lệ, tồn thấp, nhãn active/archived/draft và thao tác tách rõ. Không hardcode số23/8. Reset/empty state và pagination giữ bộ lọc khi vào/ra form. Archive/restore vẫn confirm và optimistic version cũ, không delete.
+2. Form4 fieldset: Basic; Category/Series; Price/Status; Images. Khi sửa stock readonly, có link #admin/inventory; khi tạo chỉ nhận initial stock theo nghiệp vụ cũ. Có dirty confirmation cho Back/Close và beforeunload, ref guard double submit, loading/error/success, dữ liệu giữ khi lỗi.
+3. + TẠO BỘ TRUYỆN / + NEW SERIES mở native dialog ngoài product form (không nested form). Focus trường tên; Tab/Shift+Tab wrap nội bộ, Escape đóng khi không đang lưu, return focus về opener. Dialog nằm trong viewport, nút lưu có sticky footer. Lỗi giữ dữ liệu, duplicate cho chọn series thật hiện có. Sau201 append/dedupe ID vào dropdown và tự chọn; refetch metadata không remount ProductForm hoặc file input.
+4. Series lưu độc lập ngay, không phải draft trong bộ nhớ. Nếu hủy sản phẩm sau đó, series vẫn còn; notice giải thích rõ. Đã kiểm thử việc này trên clone. Giá/tên/SKU/mô tả/file ảnh của form giữ nguyên khi tạo/chọn series.
+5. ProductForm giữ nguyên staged draft → upload → activation và partial failure/retry cùng ID của11A. AdminProductImages không sửa, các nút upload/replace/delete/primary dùng lại. Controls không bị kéo cao theo series button trên tablet. Chỉ CSS scoped AdminProducts/editor/dialog, không đổi Admin shell/sidebar/topbar hoặc font chung.
+
+### File thay đổi
+
+Thêm backend/src/AdminProductCatalog.php, backend/public/api/admin/series-create.php; sửa backend/public/api/admin/products.php và access serializer trong backend/src/AdminRepository.php. Thêm frontend/src/admin/AdminSeriesDialog.tsx và admin-products.css; sửa đúng AdminProducts/AdminProductForm và imports trong AdminApp.tsx, adminService.ts và thêm khóa i18n VI/EN. File migration002 chỉ cập nhật comment đã được duyệt/applied, giữ nguyên DDL đã phê duyệt. README và tài liệu này cập nhật.
+
+Thêm test_series_products.py, series_fixture.php (chỉ CLI, bắt buộc database clone và prefix test), check_products_12a.mjs. Các clone Apache là bản sao code riêng; đã đồng bộ những PHP cần cho tests, giữ nguyên config và kho upload riêng, không đổi cấu hình Apache/MySQL.
+
+### Kiểm thử thực tế
+
+- HTTP/MariaDB test_series_products.py PASS: guest/customer/CSRF/method; invalid title/slug/length/unknown role fields;201/409; trim; duplicate case/accent/slug; hai request Apache đồng thời dùng hai session và barrier -> đúng một201, một409, chỉ một row; title200 ký tự UTF-8; product liên kết series mới, duplicate product/FK invalid; search/filters/all sorts/effective sale price;10-row pagination không trùng ID, clamp và empty.
+- Chrome check_products_12a PASS: list/create/edit/dialog/validation/loading tại1440/900/390; VI/EN;12 lần Tab không thoát dialog, Escape/return focus; chọn series hiện có; double-submit; SKU/slug/name/description/price/status và File thật không mất; create product + upload primary; edit giữ price/stock/image; metadata/FK persist; filter giữ khi quay lại; reset/empty; active Manga mới có Volume1 đúng Series Explorer; Figure mới ở nhóm series đúng trong Collections; hủy product vẫn giữ series đã lưu. Không JavaScript exception/console.error.
+- test_admin.py và check_admin.mjs PASS trên clone: quyền, CRUD/CAS/stock rules, Inventory, Orders/COD, snapshot/archive/cancel/idempotency và khách hàng. check_images.mjs PASS trên clone images riêng: preview/upload, duplicate giữ form, upload lỗi giữ draft và retry cùng ID, replace lỗi giữ ảnh gốc, delete/primary/last-active-image, Shop/Detail cập nhật không reload, VI/EN/responsive/persistence.
+- Chrome check_auth/check_commerce/check_reports/check_orders PASS trên các clone; Demo check_navigation --demo/check_demo_checkout PASS; Live check_live_catalog PASS23 detail/37 gallery; check_discovery PASS Hero/Explorer/filter/volume/search/Figure/Cart/Wishlist; check_flipbook PASS startup/error/StrictMode/reduced-motion. Không dùng các phép thử ghi trên database chính.
+- npm build và TypeScript --noEmit PASS sau thay đổi cuối. PHP lint PASS AdminProductCatalog.php, AdminRepository.php, products.php, series-create.php. Cảnh báo Vite native-loader tương lai có sẵn không làm build thất bại; không cài dependency/font mới. .env.local được phục hồi VITE_USE_PRODUCTS_API=true, base /api.
+
+Screenshot trước: frontend/.artifacts/12a-before-products-{1440,900,390}.png và 12a-before-create-*.png. Sau: 12a-after-products-*.png, 12a-after-create-*.png, 12a-after-edit-*.png, 12a-after-series-dialog-*.png. Có 12a-series-validation-*.png, 12a-series-saving-390.png. Đây là ảnh Chrome thật trên clone, không ghép ảnh và không tuyên bố pixel-perfect. JSON:12a-api.json,12a-products-browser.json,12a-preservation.json.
+
+### Khôi phục và giới hạn
+
+ALTER DDL MariaDB implicit commit: không dùng ROLLBACK transaction để hoàn tác. Khi cần rollback ràng buộc, dừng thao tác ghi/tạo series và xem xét rollback code tương ứng trước; sau duyệt có thể DROP INDEX uq_series_title trên đúng bảng, không xóa rows. Không tự thực hiện DROP. Backup SQL đã kiểm chứng phục hồi vào clone; khôi phục toàn bộ database chính chỉ trong maintenance, sao lưu trạng thái mới nhất trước để không mất dữ liệu phát sinh sau backup. Trong phpMyAdmin chọn đúng database đích và Import file SQL; phục hồi uploads/ từ backup nếu file có sự cố, không ghi đè khi không cần. Không có sự cố dữ liệu để phải restore database chính trong giai đoạn này.
+
+Main chỉ thay schema đúng1 index. Toàn bộ rows17 bảng,37 ảnh,23 active/8 archived và18 series giữ nguyên. Source App.tsx/index.css và tất cả component/service khách hàng ngoài việc bổ sung khóa i18n Admin giữ nguyên SHA-256; Sidebar/Header Admin không chỉnh JSX/CSS, các API Auth/Cart/Checkout/Reports không sửa. Không xây quản trị đổi/xóa series, bulk delete, thanh toán mới hoặc đăng nhập mới. Series chưa gắn active product sẽ chưa hiện trong Explorer/Collections theo logic hiện hành; không sửa Storefront để ép hiển thị series rỗng. Read-only metadata dropdown vẫn dùng endpoint hiện có; không bổ sung quản trị series đầy đủ.

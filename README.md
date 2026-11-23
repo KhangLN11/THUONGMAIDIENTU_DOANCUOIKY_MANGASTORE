@@ -102,3 +102,7 @@ Navbar dùng chung còn 5 mục, giữ nguyên cấu trúc/style/icon; `#shop`, 
 ## Giai đoạn 11E — Typography & CTA scoped
 
 Series, Collections và About dùng lại Barlow Condensed/Inter từ Home, có hierarchy display/section/card/metadata. About CTA giữ hiệu ứng nền nhưng chữ/mũi tên nằm trên overlay; hỗ trợ hover, focus-visible, touch và reduced motion. Collections gọn hơn theo số figure mỗi nhóm; không đổi dữ liệu hoặc card dùng chung. Không sửa App.tsx, index.css, Navbar, Home, Shop, Footer hoặc backend. Xem [docs/API.md](docs/API.md) phần 11E và screenshot `frontend/.artifacts/11e-*` cho audit computed font, trước/sau và kiểm thử thực tế.
+
+## Giai đoạn 12A — Admin Products & tạo Series
+
+Đã áp dụng migration002 được duyệt, chỉ thêm UNIQUE(title) cho manga_series, giữ18 series và toàn bộ dữ liệu hiện có. Admin → Products có overview thật, search/category/series/status/low-stock/sort, phân trang10/20/50 và form4 nhóm. Nút + TẠO BỘ TRUYỆN mở dialog tại chỗ, tự chọn ID thật và giữ nội dung/file ảnh đang nhập. Giữ quy tắc tồn kho và luồng ảnh/draft hiện có. Xem [docs/API.md](docs/API.md) phần “12A triển khai sau phê duyệt” cho API, backup/rollback, screenshot và kiểm thử MariaDB/React thực tế.

@@ -270,3 +270,45 @@ async function imageRequest(path: string, body: FormData): Promise<unknown> {
     throw e;
   }
 }
+
+export type SeriesRecord = {
+  id: number;
+  title: string;
+  slug: string;
+  original_title: string | null;
+  description_vi: string | null;
+  description_en: string | null;
+  is_active: boolean;
+};
+export const createSeries = async (input: {
+  title: string;
+  slug: string;
+  original_title: string;
+  description_vi: string;
+  description_en: string;
+}): Promise<SeriesRecord> => {
+  const s = obj(await request("series-create.php", input));
+  return {
+    id: num(s.id),
+    title: str(s.title),
+    slug: str(s.slug),
+    original_title: nullable(s.original_title),
+    description_vi: nullable(s.description_vi),
+    description_en: nullable(s.description_en),
+    is_active: s.is_active === true,
+  };
+};
+export const getProductCatalog = async (query: string) => {
+  const raw = obj(await request("products.php" + query)),
+    counts = obj(raw.overview);
+  return {
+    ...page(raw, product),
+    overview: {
+      total: num(counts.total),
+      active: num(counts.active),
+      archived: num(counts.archived),
+      draft: num(counts.draft),
+    },
+    low_stock_threshold: num(raw.low_stock_threshold),
+  };
+};

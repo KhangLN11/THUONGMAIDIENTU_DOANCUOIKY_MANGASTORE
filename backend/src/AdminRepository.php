@@ -53,7 +53,7 @@ final class AdminRepository{
    $this->pdo->commit();return $this->order($d['order_id']);
   }catch(Throwable $e){if($this->pdo->inTransaction())$this->pdo->rollBack();throw $e;}
  }
- private static function product(array $p):array{
+ public static function product(array $p):array{
   foreach(['id','category_id','stock_quantity','price_vnd','is_featured'] as $k)$p[$k]=(int)$p[$k];foreach(['series_id','sale_price_vnd'] as $k)$p[$k]=$p[$k]===null?null:(int)$p[$k];
   $keys=['id','category_id','series_id','sku','slug','name_vi','name_en','description_vi','description_en','price_vnd','sale_price_vnd','stock_quantity','status','is_featured','updated_at'];$version=[];foreach($keys as $k)$version[$k]=$p[$k];$p['version']=hash('sha256',json_encode($version,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));return $p;
  }
