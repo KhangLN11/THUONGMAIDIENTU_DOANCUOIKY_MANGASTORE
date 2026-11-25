@@ -83,7 +83,7 @@ try {
   await navigate('shop');await waitFor("document.querySelectorAll('.shop-grid .product-card').length===23");
   const catalog=(await(await fetch('http://localhost:8443/api/products.php')).json()).data;
   const first=catalog[0],second=catalog[1];
-  await evaluate("document.querySelectorAll('.shop-grid .quick-actions button')[1].click();document.querySelectorAll('.shop-grid .quick-actions button')[1].click();document.querySelector('.shop-grid .wish').click()");
+  await evaluate("document.querySelectorAll('.shop-grid .shop-card-actions button')[1].click();document.querySelectorAll('.shop-grid .shop-card-actions button')[1].click();document.querySelector('.shop-grid .wish').click()");
   await waitCount(2);
   assert(!requests.some(u=>/\/api\/(cart|wishlist)\//.test(u)),'Guests must not call account writes');
   await openCart();await reload();await waitFor("document.querySelector('.cart-row .qty b')?.textContent==='2'");
@@ -121,7 +121,7 @@ try {
   await login(1);await waitFor("!Array.from(document.querySelectorAll('[role=status]')).some(e=>e.textContent.includes('Loading your cart'))");await waitCount(0);
   await evaluate("window.location.hash='#wishlist'");await waitFor("document.querySelector('.shop-grid') && document.querySelectorAll('.shop-grid .product-card').length===0");
   await navigate('shop');await waitFor("document.querySelectorAll('.shop-grid .product-card').length===23");
-  await evaluate("document.querySelectorAll('.shop-grid .quick-actions button')[3].click();document.querySelectorAll('.shop-grid .wish')[1].click()");await waitCount(1);
+  await evaluate("document.querySelectorAll('.shop-grid .shop-card-actions button')[3].click();document.querySelectorAll('.shop-grid .wish')[1].click()");await waitCount(1);
   await waitFor("document.querySelectorAll('.shop-grid .wish')[1].classList.contains('active')").catch(()=>{});
   await logout();await waitCount(0);assert.equal(await evaluate("!!document.querySelector('.toast')"),false);
   await login(0);await waitCount(2);assert.equal(await evaluate("!!document.querySelector('.toast')"),false);

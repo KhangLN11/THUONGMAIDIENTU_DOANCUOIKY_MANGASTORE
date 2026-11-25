@@ -71,7 +71,7 @@ try {
  const inspect=()=>JSON.parse(cli('tests/orders_fixture.php',{action:'inspect',email:emails[0],product_id:9}));
  const fill=async()=>{await waitFor("!!document.querySelector('[data-checkout-api] form')");for(const [name,value] of Object.entries({recipient_name:'Nguyễn Khách Demo',recipient_phone:'0900000000',province:'Thành phố Demo',ward:'Phường Demo',address_line:'123 Đường Demo',customer_note:'COD GUI test'}))await field(`[data-checkout-api] input[name=${name}]`,value);};
  await navigate('shop');await waitFor("document.querySelectorAll('.shop-grid .product-card').length===23");
- await evaluate("document.querySelectorAll('.shop-grid .quick-actions button')[1].click();document.querySelectorAll('.shop-grid .quick-actions button')[1].click()");await waitFor("document.querySelector('.cart-icon b')?.textContent==='2'");
+ await evaluate("document.querySelectorAll('.shop-grid .shop-card-actions button')[1].click();document.querySelectorAll('.shop-grid .shop-card-actions button')[1].click()");await waitFor("document.querySelector('.cart-icon b')?.textContent==='2'");
  await openCart();await evaluate("document.querySelector('.summary .ink-btn').click()");await waitFor("!!document.querySelector('.account-page form')");
  assert.equal(await evaluate("JSON.parse(sessionStorage.getItem('manga-store-guest-api-v1')).items[0].quantity"),2);
  await login(0);await waitFor("document.querySelector('.cart-icon b')?.textContent==='2'");
@@ -103,7 +103,7 @@ try {
  await logout();await login(1);await waitFor("document.querySelector('[data-order-history]')?.textContent.includes('Chưa có đơn hàng.')");assert(!(await evaluate("document.querySelector('.account-page').textContent")).includes(code));
  await logout();await login(0);await waitFor("!!document.querySelector('[data-order-history] .order')");report.checks.push('history/detail snapshot and address; cancel double request restocks once; account isolation; mobile no overflow');
  await language('en');await navigate('shop');await waitFor("document.querySelectorAll('.shop-grid .product-card').length===23");
- await evaluate("document.querySelectorAll('.shop-grid .quick-actions button')[1].click()");await waitFor("document.querySelector('.cart-icon b')?.textContent==='1'");
+ await evaluate("document.querySelectorAll('.shop-grid .shop-card-actions button')[1].click()");await waitFor("document.querySelector('.cart-icon b')?.textContent==='1'");
  await openCart();await evaluate("document.querySelector('.summary .ink-btn').click()");await fill();await screenshot('orders-checkout-mobile-en');
  lose=true;await cdp('Fetch.enable',{patterns:[{urlPattern:'*orders/create.php*',requestStage:'Response'}]});await evaluate("document.querySelector('[data-checkout-api] form').requestSubmit()");await waitFor("!!document.querySelector('[data-checkout-api] [role=alert]')");await cdp('Fetch.disable');
  const postCount=requests.filter(u=>u.includes('/orders/create.php')).length;await reload();await waitFor("!!document.querySelector('[data-order-code]')");assert.equal(requests.filter(u=>u.includes('/orders/create.php')).length,postCount);assert.equal(inspect().stock,originalStock-1);assert.equal(inspect().orders.length,2);

@@ -16,7 +16,11 @@ export type Quote = {
   total_vnd: number;
   quote_fingerprint: string;
 };
+export type CheckoutSource = { mode: "buy_now"; product_id: number; quantity: number };
 export type CheckoutInput = {
+  mode?: "buy_now";
+  product_id?: number;
+  quantity?: number;
   idempotency_key: string;
   quote_fingerprint: string;
   recipient_name: string;
@@ -120,8 +124,16 @@ function order(v: unknown): Order {
     }),
   };
 }
-export async function getQuote(): Promise<Quote> {
-  const o = obj(obj(await sessionRequest("orders/quote.php")).data);
+export async function getQuote(source?: CheckoutSource): Promise<Quote> {
+  const query = source
+    ? "?" +
+      new URLSearchParams({
+        mode: source.mode,
+        product_id: String(source.product_id),
+        quantity: String(source.quantity),
+      })
+    : "";
+  const o = obj(obj(await sessionRequest("orders/quote.php" + query)).data);
   if (!Array.isArray(o.items)) throw new AuthError("INVALID_RESPONSE");
   return {
     items: o.items.map((v) => {

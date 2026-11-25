@@ -1,3 +1,8 @@
+import "./shop/product-actions.css";
+import { ShopCatalog } from "./shop/ShopCatalog";
+import { initialShopFilters,demoProductId } from "./shop/shopModel";
+import { BuyNowCheckout, BuyNowResume } from "./shop/BuyNowCheckout";
+import { readBuyNowIntent,saveBuyNowIntent,clearBuyNowIntent,isBuyNowRoute,buyNowId } from "./shop/buyNowIntent";
 import { AboutPage } from "./pages/AboutPage";
 import "./discovery/series-hero-placement.css";
 import { DynamicHero } from "./discovery/DynamicHero";
@@ -6,7 +11,7 @@ import { initialDiscoveryFilters, type DiscoveryFilters } from "./discovery/cata
 import { discoveryRoute } from "./discovery/routes";
 import { MangaFlipbookLoader } from "./components/loading/MangaFlipbookLoader";
 import { AdminApp } from "./admin/AdminApp";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n, useTranslateDocument } from "./i18n";
 import type { Product } from "./types/product";
 import { USE_PRODUCTS_API } from "./config/products";
@@ -15,7 +20,7 @@ import { ProductsProvider, useProducts, useProduct } from "./hooks/useProducts";
 import { featuredManga } from "./config/featuredManga";
 import { ApiCheckout } from "./components/ApiCheckout";
 import { useCommerce } from "./hooks/useCommerce";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AccountPanel } from "./components/AccountPanel";
 import { ProductImage } from "./components/ProductImage";
 import { ProductState, ProductSkeletons } from "./components/ProductState";
@@ -276,25 +281,32 @@ function Marquee() {
   );
 }
 
+const PurchaseActions = createContext<{buy:(p:Product,quantity?:number)=>void;pending:boolean;add:(p:Product)=>void;wish:(id:number)=>void;wishes:number[]}>({buy:()=>{},pending:false,add:()=>{},wish:()=>{},wishes:[]});
+
 function ProductCard({
   product,
   onOpen,
   onAdd,
   wish,
   onWish,
+  shopActions,
 }: {
   product: Product;
   onOpen: () => void;
   onAdd: () => void;
   wish: boolean;
   onWish: () => void;
+  shopActions?: { buy: () => void; pending: boolean };
 }) {
+  const actions=useContext(PurchaseActions);
+  const unavailable=actions.pending || (product.source==="api" && !product.stockQuantity);
   const { t, formatCurrency: currency } = useI18n();
   const formatCurrency = (value: number) => currency(value, product.source === "api" ? "VND" : "USD");
   return (
-    <article className="product-card" data-source={product.source}>
+    <article className="product-card" data-source={product.source} data-shop-product={shopActions ? product.id : undefined}>
       <div className="product-img" onClick={onOpen}>
         <ProductImage src={product.image} alt={product.name} />
+        {<button className="shop-image-open" type="button" aria-label={t("shop.detail")+": "+product.name} onClick={e=>{e.stopPropagation();onOpen();}}/>}
         {product.badge && <span className="badge">{product.badge}</span>}
         <button
           className={`wish ${wish ? "active" : ""}`}
@@ -306,17 +318,18 @@ function ProductCard({
         >
           <Icon name="heart" size={18} />
         </button>
-        <div className="quick-actions">
+        {!shopActions && <div className="quick-actions">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onOpen();
+              actions.buy(product);
             }}
+            disabled={unavailable}
           >
-            {t("QUICK VIEW")}
+            {t("BUY NOW")}
           </button>
           <button
-            disabled={product.source === "api" && product.stockQuantity === 0 ? true : undefined}
+            disabled={unavailable}
             onClick={(e) => {
               e.stopPropagation();
               onAdd();
@@ -324,16 +337,17 @@ function ProductCard({
           >
             {t("ADD TO CART")}
           </button>
-        </div>
+        </div>}
       </div>
       <div className="product-meta">
         <p data-product-text={product.source ? "true" : undefined} style={product.source ? { minHeight: "2.4em" } : undefined}>{product.source === "api" ? [product.category, product.series].filter(Boolean).join(" / ") : product.series}</p>
-        <h3 data-product-text={product.source ? "true" : undefined} style={product.source ? { minHeight: "2.4em", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>{product.name}</h3>
+        <h3 data-product-text={product.source ? "true" : undefined} style={product.source ? { minHeight: "2.4em", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>{<button type="button" className="shop-product-name" onClick={onOpen}>{product.name}</button>}</h3>
         <div style={product.source ? { flexWrap: "wrap", gap: 8 } : undefined}>
           <span>{formatCurrency(product.price)}{product.originalPrice !== undefined && <del style={{ marginLeft: 8 }}>{formatCurrency(product.originalPrice)}</del>}</span>
           <small style={product.source ? { display: "inline-block" } : undefined}>{product.source === "api" ? `${t(product.stockQuantity ? "IN STOCK" : "OUT OF STOCK")} (${product.stockQuantity})` : "★★★★★"}</small>
         </div>
       </div>
+      {shopActions && <div className="shop-card-actions"><button type="button" disabled={shopActions.pending || (product.source==='api' && !product.stockQuantity)} onClick={e=>{e.stopPropagation();shopActions.buy();}}>{t("BUY NOW")}</button><button type="button" disabled={shopActions.pending || (product.source==='api' && !product.stockQuantity)} onClick={e=>{e.stopPropagation();onAdd();}}>{t("ADD TO CART")}</button></div>}
     </article>
   );
 }
@@ -719,6 +733,7 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
   const { products } = useProducts();
   const { t, formatCurrency: currency } = useI18n();
   const formatCurrency = (value: number) => currency(value, product?.source === "api" ? "VND" : "USD");
+  const actions=useContext(PurchaseActions);
   const p = product ?? products[1];
   const [qty, setQty] = useState(1);
   const gallery = product
@@ -772,7 +787,7 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
             {product ? p.description || t("No description available.") : "A museum-grade collectible forged from the world of Blade//Zero. Hand-finished detail, interchangeable katana, and individually numbered base."}
           </p>
           <div className="stock">
-            <i /> {product ? `${t(p.stockQuantity ? "IN STOCK" : "OUT OF STOCK")} (${p.stockQuantity})` : "IN STOCK — SHIPS IN 2–3 DAYS"}
+            <i /> {product ? p.source==='api'?`${t(p.stockQuantity ? "IN STOCK" : "OUT OF STOCK")} (${p.stockQuantity})`:t("shop.demoStock") : "IN STOCK — SHIPS IN 2–3 DAYS"}
           </div>
           <div className="purchase">
             <div className="qty">
@@ -780,12 +795,12 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
                 <Icon name="minus" />
               </button>
               <b>{qty}</b>
-              <button disabled={product && qty >= (p.stockQuantity ?? 0) ? true : undefined} onClick={() => setQty(qty + 1)}>
+              <button disabled={product?.source === "api" && qty >= (p.stockQuantity ?? 0) ? true : undefined} onClick={() => setQty(qty + 1)}>
                 <Icon name="plus" />
               </button>
             </div>
             <Button
-              disabled={product && !p.stockQuantity ? true : undefined}
+              disabled={product?.source === "api" && !p.stockQuantity ? true : undefined}
               onClick={() => {
                 for (let i = 0; i < qty; i++) add(p);
               }}
@@ -793,10 +808,9 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
               {t("ADD TO CART")} — {formatCurrency(p.price * qty)}
             </Button>
           </div>
-          <button className="buy" onClick={() => go(product ? "cart" : "checkout")}>
-            {product ? t("VIEW CART") : "BUY IT NOW"}
+          <button className="buy" disabled={actions.pending || (p.source==="api" && (p.stockQuantity??0)<qty)} onClick={() => actions.buy(p,qty)}>
+            {t("BUY NOW")}
           </button>
-          {product && <p role="note">{t("Cart preview only. Ordering and payment are not available yet.")}</p>}
           <div className="accordions">
             <button>
               DETAILS & DIMENSIONS <Icon name="plus" />
@@ -821,10 +835,10 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
             <ProductCard
               key={x.id}
               product={x}
-              onOpen={() => product ? go("product", x.id) : undefined}
+              onOpen={() => go("product", x.id)}
               onAdd={() => add(x)}
-              wish={false}
-              onWish={() => {}}
+              wish={actions.wishes.includes(x.id)}
+              onWish={() => actions.wish(x.id)}
             />
           ))}
         </div>
@@ -835,6 +849,7 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
 
 function Series({ go }: { go: (p: Page, id?: number) => void }) {
   const { products, status, retry } = useProducts();
+  const actions=useContext(PurchaseActions);
   return (
     <main className="series-page">
       <section className="series-hero">
@@ -894,9 +909,9 @@ function Series({ go }: { go: (p: Page, id?: number) => void }) {
               key={p.id}
               product={p}
               onOpen={() => go("product", p.id)}
-              onAdd={() => {}}
-              wish={false}
-              onWish={() => {}}
+              onAdd={() => actions.add(p)}
+              wish={actions.wishes.includes(p.id)}
+              onWish={() => actions.wish(p.id)}
             />
           ))}
         </div>
@@ -1178,11 +1193,15 @@ export default function App() {
 }
 
 function StoreApp() {
+  const {user:checkoutUser}=useAuth();
+  const returnBuyAfterLogin=useRef(false);
   const { language, t } = useI18n();
   useTranslateDocument();
-  const [page, setPage] = useState<Page>(() => discoveryRoute(window.location.hash) && (USE_PRODUCTS_API || discoveryRoute(window.location.hash)!.page !== "product") ? discoveryRoute(window.location.hash)!.page : window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
+  const [page, setPage] = useState<Page>(() => !USE_PRODUCTS_API && demoProductId(window.location.hash)!==null ? "product" : isBuyNowRoute(window.location.hash) ? "checkout" : discoveryRoute(window.location.hash) && (USE_PRODUCTS_API || discoveryRoute(window.location.hash)!.page !== "product") ? discoveryRoute(window.location.hash)!.page : window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
   useEffect(() => {
     const openAccount = () => { const hash = window.location.hash;
+      if(!USE_PRODUCTS_API && demoProductId(hash)!==null){setPage("product");setSelectedId(demoProductId(hash));setProductOrigin("#shop");return;}
+      if(isBuyNowRoute(hash)){setPage("checkout");return;}
       const candidate=discoveryRoute(hash); const route=candidate && (USE_PRODUCTS_API || candidate.page!=="product")?candidate:null;
       if(route){setPage(route.page);if(route.page==="series")setSelectedSeriesSlug(route.slug);if(route.page==="product"){setSelectedId(route.id);const origin=window.history.state?.mangaOrigin;setProductOrigin(typeof origin==="string"&&discoveryRoute(origin)?origin:null);}if(route.page==="collections")setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:route.slug??"all"}}));return;}
       if(hash==="")setPage("home"); if (hash === "#checkout" || hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
@@ -1198,9 +1217,11 @@ function StoreApp() {
   }, []);
   const [selectedSeriesSlug,setSelectedSeriesSlug]=useState<string|null>(()=>discoveryRoute(window.location.hash)?.page==="series"?discoveryRoute(window.location.hash)!.slug:null);
   const [discoveryFilters,setDiscoveryFilters]=useState<DiscoveryFilters>(()=>({...initialDiscoveryFilters,figure:{...initialDiscoveryFilters.figure,series:discoveryRoute(window.location.hash)?.page==="collections"?discoveryRoute(window.location.hash)!.slug??"all":"all"}}));
-  const [productOrigin,setProductOrigin]=useState<string|null>(null);
+  const [productOrigin,setProductOrigin]=useState<string|null>(()=>{const origin=window.history.state?.mangaOrigin;return !USE_PRODUCTS_API&&demoProductId(window.location.hash)!==null?"#shop":typeof origin==='string'&&discoveryRoute(origin)?origin:null;});
+  const [shopFilters,setShopFilters]=useState(initialShopFilters);
+  const [buyIntent,setBuyIntent]=useState(readBuyNowIntent);
   const [shopSeriesSlug, setShopSeriesSlug] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(()=>USE_PRODUCTS_API?discoveryRoute(window.location.hash)?.id??null:null);
+  const [selectedId, setSelectedId] = useState<number | null>(()=>USE_PRODUCTS_API?discoveryRoute(window.location.hash)?.id??null:demoProductId(window.location.hash));
   const commerce = useCommerce();
   const catalog = useProducts();
   const { cart, wishes, setCart, toggleWish } = commerce;
@@ -1213,9 +1234,13 @@ function StoreApp() {
     return () => { if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current); };
   }, [commerce.accountKey]);
   const go = (p: Page, id?: number) => {
+    if(p=== "checkout"){clearBuyNowIntent();setBuyIntent(null);}
     if(p==="series"){openSeries(null);return;}
     if(p==="collections"){openFigures();return;}
-    if(USE_PRODUCTS_API&&p==="product"&&id!==undefined){const origin=page==="product"?productOrigin:window.location.hash.startsWith("#series")||window.location.hash.startsWith("#collections")?window.location.hash:null;setProductOrigin(origin);window.history.pushState({mangaOrigin:origin},"","#product/"+id);}
+    if(!USE_PRODUCTS_API&&p==="product"){
+      if(id!==undefined){setProductOrigin("#shop");setSelectedId(id);window.history.pushState({mangaOrigin:"#shop"},"","#product/demo/"+id);}else{setProductOrigin(null);setSelectedId(null);}
+    }
+    if(USE_PRODUCTS_API&&p==="product"&&id!==undefined){const origin=page==="product"?productOrigin:window.location.hash==="#shop"||window.location.hash.startsWith("#series")||window.location.hash.startsWith("#collections")?window.location.hash:null;setProductOrigin(origin);window.history.pushState({mangaOrigin:origin},"","#product/"+id);}
     else if (p !== "product") window.history.pushState(null, "", "#" + p);
     if (p === "shop") setShopSeriesSlug(null);
     if (p === "product" && USE_PRODUCTS_API) {
@@ -1229,7 +1254,7 @@ function StoreApp() {
     setSelectedSeriesSlug(slug);setPage("series");window.history.pushState(null,"",slug?"#series/"+slug:"#series");window.scrollTo({top:0,behavior:"smooth"});
   };
   const openFigures=(slug?:string)=>{setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:slug??"all"}}));setPage("collections");window.history.pushState(null,"",slug?"#collections/"+slug:"#collections");window.scrollTo({top:0,behavior:"smooth"});};
-  const returnToDiscovery=()=>{const route=productOrigin?discoveryRoute(productOrigin):null;if(route?.page==="series")openSeries(route.slug);else if(route?.page==="collections")openFigures(route.slug??(discoveryFilters.figure.series==="all"?undefined:discoveryFilters.figure.series));};
+  const returnToDiscovery=()=>{const route=productOrigin?discoveryRoute(productOrigin):null;if(route?.page==="series")openSeries(route.slug);else if(route?.page==="shop")go("shop");else if(route?.page==="collections")openFigures(route.slug??(discoveryFilters.figure.series==="all"?undefined:discoveryFilters.figure.series));};
   const add = (p: Product) => {
     void commerce.add(p).then(added => {
       if (!added) return;
@@ -1245,23 +1270,30 @@ function StoreApp() {
         ? "Manga Universe — Vật phẩm từ những thế giới khác"
         : "Manga Universe — Objects From Other Worlds";
   }, [language]);
-  const renderDiscoveryProduct=(p:Product)=><div className="discovery-product-item" key={p.id} data-discovery-product={p.id}><ProductCard product={p} onOpen={()=>go("product",p.id)} onAdd={()=>add(p)} wish={wishes.includes(p.id)} onWish={()=>toggleWish(p.id)}/><div className="discovery-card-actions"><button onClick={()=>go("product",p.id)}>{t("discovery.viewProduct")}</button><button disabled={!p.stockQuantity||commerce.busy||commerce.loading} onClick={()=>add(p)}>{t("ADD TO CART")}</button></div></div>;
+  const resumeBuyNow=()=>{if(!buyIntent)return;setToast("");window.history.pushState(null,"","#checkout/buy-now/"+buyIntent.productId);setPage("checkout");window.scrollTo({top:0,behavior:"smooth"});};
+  const beginBuyNow=(p:Product,quantity=1)=>{if(!Number.isInteger(quantity)||quantity<1||quantity>999||(USE_PRODUCTS_API&&(p.source!=="api"||(p.stockQuantity??0)<quantity)))return;setToast("");setBuyIntent(saveBuyNowIntent(p.id,quantity));window.history.pushState(null,"","#checkout/buy-now/"+p.id);setPage("checkout");window.scrollTo({top:0,behavior:"smooth"});};
+  useEffect(()=>{if(returnBuyAfterLogin.current&&checkoutUser&&page==="account"&&buyIntent){returnBuyAfterLogin.current=false;resumeBuyNow();}},[checkoutUser?.id,page,buyIntent]);
+  const cancelBuyNow=()=>{clearBuyNowIntent();setBuyIntent(null);};
+  const renderShopProduct=(p:Product)=><ProductCard key={p.id} product={p} onOpen={()=>go("product",p.id)} onAdd={()=>add(p)} wish={wishes.includes(p.id)} onWish={()=>toggleWish(p.id)} shopActions={{buy:()=>beginBuyNow(p),pending:commerce.loading||commerce.busy}}/>;
+  const renderDiscoveryProduct=(p:Product)=><div className="discovery-product-item" key={p.id} data-discovery-product={p.id}><ProductCard product={p} onOpen={()=>go("product",p.id)} onAdd={()=>add(p)} wish={wishes.includes(p.id)} onWish={()=>toggleWish(p.id)}/></div>;
   if (adminRoute) return <AdminApp />;
   return (
-    <div className="app">
+    <PurchaseActions.Provider value={{buy:beginBuyNow,pending:commerce.loading||commerce.busy,add,wish:toggleWish,wishes}}><div className="app">
       {page !== "checkout" && <Header go={go} cartCount={cart.length} activePage={page === "product" ? (productOrigin?.startsWith("#series") ? "series" : productOrigin?.startsWith("#collections") ? "collections" : "shop") : page} />}
       {USE_PRODUCTS_API && commerce.loading && <p role="status">{t("commerce.loading")}</p>}
       {USE_PRODUCTS_API && commerce.error && <div role="alert"><p>{t(`commerce.error.${commerce.error}`)}</p><button onClick={() => void commerce.retry()}>{t("TRY AGAIN")}</button></div>}
       {page === "wishlist" && <Shop seriesSlug={null} wishlistOnly commercePending={commerce.loading} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "home" && <Home go={go} openSeries={openSeries} add={add} wishes={wishes} toggleWish={toggleWish} />}
-      {page === "shop" && <Shop key={shopSeriesSlug ?? "all"} seriesSlug={shopSeriesSlug} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
-      {page === "product" && (USE_PRODUCTS_API ? <>{productOrigin&&<div className="discovery-return" data-product-text><button className="discovery-breadcrumb" onClick={returnToDiscovery}>← {t(productOrigin.startsWith("#collections")?"discovery.allCollections":"discovery.backSeries")}</button></div>}<ApiProductPage id={selectedId} add={add} go={go} /></> : <ProductPage add={add} go={go} />)}
+      {page === "shop" && <ShopCatalog seriesSlug={shopSeriesSlug} filters={shopFilters} onFilters={setShopFilters} renderProduct={renderShopProduct}/>}
+      {page === "product" && (USE_PRODUCTS_API ? <>{productOrigin&&<div className="discovery-return" data-product-text><button className="discovery-breadcrumb" onClick={returnToDiscovery}>← {t(productOrigin==="#shop"?"shop.back":productOrigin.startsWith("#collections")?"discovery.allCollections":"discovery.backSeries")}</button></div>}<ApiProductPage id={selectedId} add={add} go={go} /></> : productOrigin==="#shop" && selectedId!==null ? (demoProducts.some(p=>p.id===selectedId)?<ProductPage key={selectedId} product={demoProducts.find(p=>p.id===selectedId)!} add={add} go={go}/>:<main className="inner-page"><ProductState status="error" notFound/></main>):<ProductPage add={add} go={go} />)}
       {page === "series" && (USE_PRODUCTS_API?<>{selectedSeriesSlug===null&&<div className="series-hero-slot" data-series-hero-slot><DynamicHero openSeries={openSeries} openFigures={()=>openFigures()}/></div>}<SeriesExplorer slug={selectedSeriesSlug} openSeries={openSeries} filters={discoveryFilters} onFilters={setDiscoveryFilters} renderProduct={renderDiscoveryProduct} openFigures={openFigures}/></>:<Series go={go}/>)}
       {page === "collections" && USE_PRODUCTS_API && <FigureCollections filters={discoveryFilters} onFilters={setDiscoveryFilters} renderProduct={renderDiscoveryProduct} openFigures={openFigures}/>}
       {page === "about" && <AboutPage go={go} />}
       {page === "collections" && !USE_PRODUCTS_API && <main className="discovery-surface discovery-collections-page" data-product-text><section className="discovery-figures" data-figure-collections><div className="discovery-section-heading"><div><p className="discovery-kicker">DEMO / ANIME COLLECTIONS</p><h2>{t("discovery.reality")}</h2><p>{t("discovery.figuresIntro")}</p></div></div><div className="product-grid discovery-figure-grid">{demoProducts.filter(p => p.category === "Figures" || p.category === "Accessories").map(p => <ProductCard key={p.id} product={p} onOpen={() => go("product", p.id)} onAdd={() => add(p)} wish={wishes.includes(p.id)} onWish={() => toggleWish(p.id)} />)}</div></section></main>}
       {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} onQuantity={commerce.quantity} serverSubtotal={commerce.subtotal} lineTotals={commerce.lineTotals} busy={commerce.busy || commerce.loading} pending={commerce.loading || !!commerce.error} />}
-      {page === "checkout" && (USE_PRODUCTS_API ? <ApiCheckout key={commerce.accountKey ?? "guest"} cart={cart} pending={commerce.loading} onHome={() => go("home")} onAccount={() => go("account")} onOrders={() => go("account")} onPlaced={async () => { await commerce.retry(); catalog.retry(); }} /> : <Checkout cart={cart} go={go} />)}
+      {page === "checkout" && isBuyNowRoute(window.location.hash) && <BuyNowCheckout key={window.location.hash} intent={buyIntent?.productId===buyNowId(window.location.hash)?buyIntent:null} onShop={()=>{cancelBuyNow();go("shop");}} onAccount={()=>{returnBuyAfterLogin.current=true;go("account");}} onOrders={()=>{cancelBuyNow();go("account");}} onPlaced={async()=>{setBuyIntent(null);catalog.retry();}}/>}
+      {page === "checkout" && !isBuyNowRoute(window.location.hash) && (USE_PRODUCTS_API ? <ApiCheckout key={commerce.accountKey ?? "guest"} cart={cart} pending={commerce.loading} onHome={() => go("home")} onAccount={() => go("account")} onOrders={() => go("account")} onPlaced={async () => { await commerce.retry(); catalog.retry(); }} /> : <Checkout cart={cart} go={go} />)}
+      {page === "account" && <BuyNowResume intent={buyIntent} onContinue={resumeBuyNow} onCancel={cancelBuyNow}/>}
       {page === "account" && <Account go={go} wishes={wishes} onOrderChanged={() => { void commerce.retry(); catalog.retry(); }} />}
       {page !== "checkout" && <Footer go={go} />}
       {toast && toastOwner.current === commerce.accountKey && (
@@ -1271,6 +1303,6 @@ function StoreApp() {
           <button onClick={() => go("cart")}>{t("VIEW CART")}</button>
         </div>
       )}
-    </div>
+    </div></PurchaseActions.Provider>
   );
 }

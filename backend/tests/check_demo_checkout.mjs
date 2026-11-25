@@ -55,7 +55,7 @@ try {
 
 
  await navigate('shop');await waitFor("document.querySelectorAll('.shop-grid .product-card').length===8");
- await evaluate("document.querySelectorAll('.shop-grid .quick-actions button')[1].click()");await waitFor("document.querySelector('.cart-icon b')?.textContent==='1'");
+ await evaluate("document.querySelectorAll('.shop-grid .shop-card-actions button')[1].click()");await waitFor("document.querySelector('.cart-icon b')?.textContent==='1'");
  await evaluate("document.querySelector('.cart-icon').click()");await waitFor("!!document.querySelector('.summary .ink-btn')");await evaluate("document.querySelector('.summary .ink-btn').click()");
  await waitFor("!!document.querySelector('.checkout form')");assert.equal(await evaluate("!!document.querySelector('[data-checkout-api]')"),false);
  assert.equal(await evaluate("document.querySelector('.checkout select').value"),'JAPAN');

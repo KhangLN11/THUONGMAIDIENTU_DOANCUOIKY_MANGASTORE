@@ -60,7 +60,7 @@ try {
   assert(catalog.every(p=>p.sku.startsWith('CAT-')));
   const report={productCount:23,detailIds:[],gallerySelections:0,languages:['en','vi'],viewports:[],errors:[]};
   const setQuery=async value=>{
-    await evaluate(`(() => { const input=document.querySelector('.shop-tools input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+    await evaluate(`(() => { const input=document.querySelector('[name=shop_search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`);
   };
   const names=()=>evaluate("Array.from(document.querySelectorAll('.shop-grid .product-meta h3')).map(n=>n.textContent)");
   await waitFor("document.querySelectorAll('.arrivals .product-card').length===4");
@@ -76,7 +76,7 @@ try {
   await waitFor("Array.from(document.querySelectorAll('.shop-grid img')).every(i=>i.complete&&i.naturalWidth>0)");
   assert.deepEqual(await names(),catalog.map(p=>p.name_en));
   assert(await evaluate("Array.from(document.querySelectorAll('.shop-grid img')).every(i=>i.getAttribute('src').startsWith('/manga-store/backend/public/uploads/products/'))"));
-  assert.equal(await evaluate("getComputedStyle(document.querySelector('.shop-grid')).gridTemplateColumns.split(' ').length"),3);
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('.shop-grid')).gridTemplateColumns.split(' ').length"),4);
   await screenshot('catalog-live-shop-desktop');
   const rect=await evaluate("(() => {const r=document.querySelector('.shop-grid .product-img').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()");
   await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x,y:rect.y});
@@ -85,10 +85,10 @@ try {
   report.hoverEffect='passed';
   await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:2,y:2});
   for(const [label,total] of [['Manga Books',14],['Japanese Novels',3],['Figures',6]]) {
-    await evaluate(`Array.from(document.querySelectorAll('.shop-layout aside button')).find(b=>b.textContent.includes(${JSON.stringify(label)})).click()`);
+    await evaluate(`Array.from(document.querySelectorAll('.shop-sidebar .shop-filter-choice')).find(b=>b.textContent.includes(${JSON.stringify(label)})).click()`);
     await waitFor(`document.querySelectorAll('.shop-grid .product-card').length===${total}`);
   }
-  await evaluate("document.querySelector('.shop-layout aside button').click()");
+  await evaluate("document.querySelector('.shop-sidebar .shop-filter-choice').click()");
   await setQuery('Naruto');
   await waitFor("document.querySelectorAll('.shop-grid .product-card').length===2");
   assert((await names()).every(name=>name.includes('Naruto')));
@@ -143,7 +143,7 @@ try {
   await language('en');
   await navigate('shop');
   await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
-  await waitFor("getComputedStyle(document.querySelector('.shop-grid')).gridTemplateColumns.split(' ').length===2");
+  await waitFor("getComputedStyle(document.querySelector('.shop-grid')).gridTemplateColumns.split(' ').length===1");
   assert(await evaluate('document.documentElement.scrollWidth<=innerWidth'));
   await pause(2600); // Wait for the existing cart toast to disappear before the screenshot.
   await screenshot('catalog-live-shop-mobile');
@@ -156,7 +156,7 @@ try {
   await evaluate("document.querySelectorAll('.thumbs button')[1].click()");
   await waitFor(`document.querySelector('.main-image img')?.getAttribute('src')===${JSON.stringify(figure.images[1].image_url)}`);
   await screenshot('catalog-live-figure-mobile');
-  report.viewports=[{width:1440,height:1000,shopColumns:3},{width:390,height:844,shopColumns:2,horizontalOverflow:false}];
+  report.viewports=[{width:1440,height:1000,shopColumns:4},{width:390,height:844,shopColumns:1,horizontalOverflow:false}];
   assert.equal(exceptions.length,0,JSON.stringify(exceptions));
   assert.equal(consoleErrors.length,0,JSON.stringify(consoleErrors));
   report.uncaughtExceptions=exceptions;report.consoleErrors=consoleErrors;

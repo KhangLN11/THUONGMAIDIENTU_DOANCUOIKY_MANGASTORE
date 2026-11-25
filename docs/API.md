@@ -1054,3 +1054,121 @@ Screenshot trước: frontend/.artifacts/12a-before-products-{1440,900,390}.png 
 ALTER DDL MariaDB implicit commit: không dùng ROLLBACK transaction để hoàn tác. Khi cần rollback ràng buộc, dừng thao tác ghi/tạo series và xem xét rollback code tương ứng trước; sau duyệt có thể DROP INDEX uq_series_title trên đúng bảng, không xóa rows. Không tự thực hiện DROP. Backup SQL đã kiểm chứng phục hồi vào clone; khôi phục toàn bộ database chính chỉ trong maintenance, sao lưu trạng thái mới nhất trước để không mất dữ liệu phát sinh sau backup. Trong phpMyAdmin chọn đúng database đích và Import file SQL; phục hồi uploads/ từ backup nếu file có sự cố, không ghi đè khi không cần. Không có sự cố dữ liệu để phải restore database chính trong giai đoạn này.
 
 Main chỉ thay schema đúng1 index. Toàn bộ rows17 bảng,37 ảnh,23 active/8 archived và18 series giữ nguyên. Source App.tsx/index.css và tất cả component/service khách hàng ngoài việc bổ sung khóa i18n Admin giữ nguyên SHA-256; Sidebar/Header Admin không chỉnh JSX/CSS, các API Auth/Cart/Checkout/Reports không sửa. Không xây quản trị đổi/xóa series, bulk delete, thanh toán mới hoặc đăng nhập mới. Series chưa gắn active product sẽ chưa hiện trong Explorer/Collections theo logic hiện hành; không sửa Storefront để ép hiển thị series rỗng. Read-only metadata dropdown vẫn dùng endpoint hiện có; không bổ sung quản trị series đầy đủ.
+
+## Giai đoạn12B — Shop layout & Buy Now intent (24/11/2026)
+
+### Audit và giới hạn Checkout đã xác định
+
+ApiCheckout dùng getQuote() -> GET orders/quote.php. OrderRepository.quote/create đọc toàn bộ cart user, tính lại giá/stock và create sau đó DELETE cart_items trong cùng transaction. Chưa có quote/create riêng cho một product_id. Không thể dùng API này cho Buy Now mà bảo đảm không mua nhầm cả cart. Giai đoạn12B áp dụng đúng trường hợpB được yêu cầu: Buy Now mở Checkout riêng để xem trước, KHÔNG gọi Quote/Create Order, xác nhận bị disabled và thông báo sẽ hoàn thiện ở giai đoạn Checkout tiếp theo. Không tự mở rộng API, migration hoặc tự thay đổi cart để lách giới hạn.
+
+API thực tế đầu giai đoạn trả23 active/37 images. Snapshot DB có31 products (23active/8archived),18 series và17 bảng. Không lấy số lượng từ mockup để render. Mockup hình không được kèm trong lượt12B; triển khai theo bố cục mô tả toolbar trên/sidebar trái/grid bên phải, không tuyên bố khớp pixel với ảnh không có.
+
+### Shop và dữ liệu
+
+Thêm src/shop/ShopCatalog.tsx, shopModel.ts, shop.css. Giữ chính markup Hero SHOP/ALL, họa tiết/ngày Archive/2025/chữ Nhật từ Shop gốc; không đổi Navbar/Footer. Model lọc từ ProductsProvider/service hiện có, chỉ API active. Toolbar search theo name_vi/name_en/SKU/series, lowercase + bỏ dấu NFD/đ; Demo có alias t(name) hiện có. Sort default giữ thứ tự API; newest theo ID auto_increment nhập catalog (nhãn rõ là newest catalog entries, không phải ngày phát hành); price asc/desc, localized name A-Z và ID phụ ổn định.
+
+Sidebar category/series lấy từ sản phẩm trả về, không dựng series/ID hoặc count giả. Facet count áp dụng query/price/stock và các filter khác, bỏ chính facet tương ứng khi tính count. Không có active accessories nên không tự tạo lựa chọn phụ kiện giả; nó xuất hiện khi có sản phẩm thật. Giá min/max nguyên không âm, min<=max, max14 chữ số; invalid có alert, presets chỉ là range cấu hình. Live VND, Demo giữ USD nguyên bản, không quy đổi. Stock in/out chỉ hiện Live vì Demo không có metadata tồn kho đáng tin cậy. Có reset và details đóng/mở.
+
+Pagination phía client trên danh sách active API hiện có,24/page, số kết quả/range/tổng trang tính từ dữ liệu; filter reset page1, dataset giảm thì clamp trang hiển thị. Không phải server-side pagination mới. Catalog lớn về sau cần API phân trang/tìm kiếm riêng; không thay public API trong12B. Không thêm Grid/List hoặc bộ lọc không hoạt động/bán chạy/rating/age/authenticity thiếu dữ liệu.
+
+Desktop1440: sidebar220px và4 cột; tablet900: sidebar190px và2 cột; mobile390:1 cột, nút mở native filter dialog thay sidebar. Dialog focus wrap/Escape/return focus, label/select rõ, không horizontal overflow. Nút/actions min48px, reduced-motion không dịch nút khi hover. Không thêm thư viện/font.
+
+### Product Card và điều hướng
+
+ProductCard trong App.tsx nhận optional shopActions. Khi không có prop, DOM/hành vi cũ giữ nguyên cho Home/Series/Collections/Wishlist/related. Riêng Shop bỏ Quick View, dùng MUA NGAY primary đen và ADD TO CART secondary trắng luôn hiện (không phụ thuộc hover). Buttons plain không pseudo overlay, có focus outline. Giữ frame border đen, background gray, ProductImage/ảnh/hover/grayscale gốc; contain chỉ scope Shop. Card flex cân chiều cao, full tên không bị clamp hai dòng trong Shop, giá/action ở cuối card. Không sửa ProductImage hoặc ảnh nguồn.
+
+Image có overlay button native dùng Enter và aria-label; parent image click cũ còn hoạt động, overlay/wishlist stopPropagation để không điều hướng hai lần. Tên là button native. Wishlist không mở detail; Add dùng nguyên commerce.add/mergeGuest/server validation/badge/toast cũ, không chuyển Checkout. Buy không gọi add. Khi mở Buy, dọn toast Add cũ để nó không che summary của sản phẩm khác.
+
+Shop render bằng ShopCatalog mới; hàm Shop gốc giữ nguyên cho trang Wishlist dùng chung trước đây, tránh redesign Wishlist. Filters nằm trong StoreApp nên giữ qua Product Detail/Browser Back và ngôn ngữ; không lưu filters qua reload. API Product Detail route #product/<id>, origin #shop hỗ trợ back; gallery/layout không sửa. Demo Shop dùng #product/demo/<id>, chỉ chọn Demo ID và không gọi Product API. ProductPage nhận đúng Demo product (thay vì mặc định Ronin cũ); chỉ availability predicates/label nhận biết Demo không có server stock, không tự bịa số tồn kho. Home Demo vẫn hành vi Figma cũ; không trộn ID Demo/MySQL.
+
+### Buy Now intent an toàn
+
+Thêm buyNowIntent.ts và BuyNowCheckout.tsx. Nút Buy tạo ý định quantity1 với ID thực; Live kiểm tra source api/stock>0 từ catalog. Route #checkout/buy-now/<id> tách #checkout cart. sessionStorage manga-buy-now-api hoặc manga-buy-now-demo chỉ chứa {productId,quantity:1,mode}; không lưu giá, total, stock, địa chỉ hay token/session ID. Reader validate số nguyên dương, quantity/mode/allowlist keys; route phải khớp intent. Sai/đã hủy/khác mode/giá giả thêm vào intent -> expired, không rơi về cart checkout. Storage bị chặn vẫn dùng state hiện tại, reload có thể hết hiệu lực an toàn.
+
+Checkout preview tái sử dụng CSS bố cục checkout hiện có, đọc mới product.php khi Live để xác nhận còn active/tồn kho (404/stock0 có trạng thái phù hợp). Chỉ hiển thị đúng một product,quantity1, giá công khai và note chưa có quote phí giao hàng/tổng tiền xác nhận. Không collect shipping/payment, không POST order, không ghi cart hoặc trừ stock. Demo dùng đúng object Demo, không Product API hoặc transaction thật. Confirmation luôn disabled, không có form create-order ẩn.
+
+Guest có thể mở preview và chọn đăng nhập. Account có banner tiếp tục ý định sau khi user được xác thực; mở lại đúng ID và refetch. Auth/guest-cart merge vẫn theo cơ chế cũ: guest cart A có thể được merge bình thường khi login, nhưng Buy B không bị thêm vào cart. Đã kiểm thử server cart sau login chỉ có A; preview/continue B không thay đổi cart. Cancel/brand-back clear riêng buy key, giữ storage commerce/idempotency khác. Browser Back sau cancel thấy expired thay vì chọn nhầm sản phẩm. Checkout từ Cart đi #checkout và clear buy intent, giữ nguyên ApiCheckout/idempotency/onPlaced.
+
+Lưu ý Demo cart vốn chỉ ở React memory: điều hướng Buy không xóa cart, nhưng full reload vẫn reset Demo cart theo hành vi trước đây; chỉ buy intent Demo được giữ sessionStorage. Live guest cart giữ sessionStorage như cũ. Không thay Cart hook để thêm persistence mới ngoài phạm vi.
+
+### Phần cần làm ở giai đoạn Checkout kế tiếp
+
+Cần backend quote một selection/mode Buy Now bằng product_id+quantity, kiểm tra active/stock/giá/phí ở server; quote fingerprint phải gắn đúng selection. Create order phải đọc selection đó, có idempotency hash bao gồm mode, transaction/lock/recheck/trừ kho/order snapshots/COD như luồng hiện có và tuyệt đối không DELETE hoặc mua toàn bộ cart. Chỉ sau khi các API này được phê duyệt/kiểm thử mới bật xác nhận Buy Now. Không triển khai chúng trong12B.
+
+### File và kiểm thử thực tế
+
+Production thêm frontend/src/shop/{ShopCatalog.tsx,shopModel.ts,buyNowIntent.ts,BuyNowCheckout.tsx,shop.css}; sửa App.tsx (optional card action + routing/state integration) và chỉ thêm khóa i18n.tsx. Không sửa ApiCheckout.tsx, orderService, useCommerce, Auth, backend PHP hoặc schema. Không sửa Admin source/CSS hay các file discovery/About/gallery/loader. README/API.md này cập nhật.
+
+Tests mới: check_shop_before.mjs (baseline), check_shop_model.mjs, check_shop_buy_now.mjs, check_shop_resilience.mjs. Tests cũ check_commerce/check_orders/check_demo_checkout đổi selector Add ở Shop; check_live_catalog đổi toolbar/sidebar selector và kỳ vọng grid4/1 đúng yêu cầu, giữ toàn bộ kiểm tra dữ liệu/gallery/Cart. Không sửa test để bỏ kiểm tra nghiệp vụ.
+
+- check_shop_model PASS accent/case/SKU search, stock/price validation kể cả Infinity/negative/fraction/min>max, sort giá ổn định,53 ID phân trang24/24/5 không trùng.
+- Chrome check_shop_buy_now Live và Demo PASS grid4/2/1, full action visible48px, search không dấu, filter series/price/stock/sort/reset, ảnh/tên đúng detail và Back giữ filter; Home main DOM trước/sau giống nhau trước các thao tác thay đổi wishlist/cart. Mouse hover thật/Enter có native event/text/touch390 hoạt động, không overlay che chữ. Mobile dialog/Escape/focus-return, VI/EN. Không JS exception/console.error.
+- Live clone: thêm A vào guest cart rồi Buy B -> preview chỉ B, không quote/create; reload giữ B và guest cart; login customer giữ đúng intent, server cart chỉ A; continue B không đổi server cart; cancel/storage/history không chọn nhầm. Chỉ lưu ba key mode/productId/quantity, không client price. Demo không Product/Order API.
+- Chrome check_shop_resilience PASS với response-only fixtures, không ghi DB:53 records giả trong riêng response kiểm thử để kiểm24/24/5/không trùng/filter reset page; loading local không mở lại full loader;503/no Demo fallback/retry; stock0 disable hai action; stock đổi0 ở detail vẫn không gọi order; session intent thêm price giả bị từ chối; reduced-motion hover transform none. Không seed fixtures này vào MySQL hoặc source sản phẩm.
+- Hồi quy Chrome PASS: Auth, commerce guest merge/retry/account isolation/cart+wishlist, Admin Products/Inventory/Orders/COD, Reports/CSV, Cart Checkout double-submit/lost-response/reload/idempotency/history/cancel trên các database clone. Demo Checkout và navigation PASS; Live catalog23 details/37 galleries/VI-EN/VND/filter/hover PASS; Discovery Hero/series/search/volume/Figure PASS; true-color gallery và Flipbook readiness/error/StrictMode/reduced motion PASS.
+- Build và TypeScript --noEmit PASS sau thay đổi cuối. Không chạy PHP lint mới vì không sửa PHP; cảnh báo Vite native config loader tương lai là cảnh báo cũ, không phải lỗi build. .env.local phục hồi Live true, base /api. MySQL có ngắt giữa lượt thử; người dùng bật lại rồi các kiểm thử thật được chạy lại, không tự restart hoặc sửa config.
+
+Ảnh trước: frontend/.artifacts/12b-before-shop-{1440,900,390}.png và12b-before-cards-*.png. Sau:12b-after-shop-{live,demo}-{1440,900,390}.png,12b-after-cards-*.png. Hover thường/sau:12b-actions-normal-{live,demo}.png /12b-actions-hover-*.png. Buy preview desktop/mobile:12b-buy-now-{live,demo}-desktop.png /12b-buy-now-*-390.png. Drawer:12b-filter-drawer-*-390.png. States:12b-shop-loading.png,12b-shop-error.png,12b-pagination-response-only.png,12b-buy-now-stock-changed.png. Không tuyên bố khớp pixel-perfect với mockup không được đính kèm. JSON:12b-shop-live.json,12b-shop-demo.json,12b-resilience.json,12b-tests.json,12b-preservation.json.
+
+### Bảo toàn
+
+Baseline C:/xampp/manga-store-backups/2026-11-24-shop-buy-now/ có App/i18n/index.css và source hashes/snapshot read-only trước/sau. Đối chiếu schema/rows/hash cả17 bảng giống nhau,23active/8archived/37images/18series không đổi. PHP/API và uploads toàn bộ hash cũ giống nhau. Các hàm Home/Header/Footer/CharacterArt/SectionTitle/Shop legacy/Series/Cart/Checkout/Account/ApiProductPage giữ nguyên source; ProductPage không đổi gallery/layout, chỉ3 điều kiện/text tồn kho Demo như trên. CSS chung và source các trang bảo vệ giữ nguyên hash; Admin/Reports/Auth/Cart/Order service không sửa. Không migration, seed, dependency/font hoặc ảnh mới. Buy Now giai đoạn này là preview an toàn, không phải chức năng xác nhận đơn một sản phẩm đã hoàn chỉnh.
+
+Ảnh đối chiếu VI cùng ngôn ngữ baseline:12b-after-shop-live-{1440,900,390}-vi.png; Buy preview VI:12b-buy-now-live-1440-vi.png, chụp bằng backend/tests/capture_shop_vi.mjs (read-only API, không cart/order write).
+
+
+## Giai đoạn 12C — Checkout COD dùng chung (24/11/2026)
+
+Live API sử dụng cùng `ApiCheckout` cho Cart và Buy Now. Buy Now không còn bị khóa ở preview. Demo vẫn chỉ minh họa và không gọi Order API.
+
+### Contract tương thích
+
+- `GET /api/orders/quote.php`: giữ nguyên quote từ cart của session.
+- `GET /api/orders/quote.php?mode=buy_now&product_id=9&quantity=3`: quote một sản phẩm active từ MySQL; quantity nguyên 1–999, không vượt kho. Không ghi dữ liệu.
+- `POST /api/orders/create.php`: giữ nguyên payload Cart; Buy Now bổ sung `mode: "buy_now"`, `product_id`, `quantity` vào cùng payload địa chỉ/COD/quote_fingerprint/idempotency_key.
+- `mode=cart` tương đương mặc định; không cho gắn lựa chọn sản phẩm riêng vào Cart mode. Không nhận giá, tổng tiền, user_id từ client.
+- Response quote/order và các endpoint history/detail/cancel giữ nguyên. Session bắt buộc; POST bắt buộc CSRF. Không thêm endpoint hoặc migration.
+
+### Transaction và bảo toàn Cart
+
+1. Chuẩn hóa request và tìm đơn theo UNIQUE `(user_id,idempotency_key)`.
+2. Cart khóa cart của chính user rồi các sản phẩm theo thứ tự product_id; Buy Now chỉ khóa sản phẩm đã chọn. Kiểm tra lại active, quantity, stock và quote fingerprint.
+3. Dùng chung đoạn tạo địa chỉ, orders/order_items snapshot, payments COD pending, shipments pending, trừ kho có điều kiện và ghi inventory movement.
+4. Chỉ Cart mode xóa cart_items sau khi ghi đơn thành công. Buy Now không tạo cart, cart_items tạm, không gọi merge, không thêm/xóa/đổi số lượng cart.
+5. Commit hoặc rollback toàn bộ. Giữ retry deadlock/lock timeout và xử lý duplicate key đã có.
+
+Giá = sale_price_vnd khi >0 và <= price_vnd, nếu không dùng price_vnd. Phí từ `CHECKOUT_SHIPPING_FEE_VND`, mặc định PHP 30.000 VNĐ. Frontend luôn dùng quote, không tự tính giá chính thức. Giá thay đổi sau quote trả `QUOTE_CHANGED`, tải lại quote để người dùng xác nhận lại.
+
+Canonical payload Cart giữ nguyên để tương thích retry của đơn cũ. Buy Now bổ sung mode/product_id/quantity vào request hash và gắn mode vào quote fingerprint. Cùng key/nội dung trả đơn cũ; đổi mode, sản phẩm, quantity hoặc địa chỉ bị `IDEMPOTENCY_CONFLICT`. Frontend không coi conflict là thành công. Key retry được giữ trong sessionStorage theo user + nguồn + sản phẩm/quantity; không đổi key khi mất phản hồi. Refresh kiểm tra đơn đã commit bằng checkout_key trước khi lấy quote.
+
+### React và Product Card
+
+- `BuyNowCheckout` Live là adapter mỏng gọi `ApiCheckout`, không có form nhận hàng thứ hai. `buyNowIntent` chỉ lưu ID, quantity, namespace Demo/API.
+- Guest được đưa tới Account rồi tự quay lại đúng Buy Now sau đăng nhập. Cơ chế đồng bộ guest cart khi đăng nhập vốn có không bị thay đổi; sản phẩm Buy Now không được đưa vào cơ chế merge.
+- Thành công dọn intent, giữ màn hình biên nhận; hủy chỉ dọn ý định mua. Cart Checkout vẫn refetch cart sau thành công; Buy Now không ghi cart và không thay badge.
+- Một cặp Mua ngay/Thêm vào giỏ cho Home product sections, Shop, Series Detail, Collections, Related và Wishlist. Ảnh/tên mở chi tiết; Wishlist độc lập. Shop giữ cặp nút thường trực; các card khác giữ overlay hover, hỗ trợ focus-within và hiển thị trên touch/mobile. Bỏ hàng nút lặp ở Series/Collections.
+- Product Detail giữ gallery/layout, nút Mua ngay dùng quantity đã chọn. Demo dùng ID namespace riêng, không tạo đơn thật.
+
+### Kiểm thử đã thực chạy
+
+- MariaDB 10.4.32/XAMPP: `test_buy_now.py`, `test_orders.py`, `test_admin.py`; chỉ database test `manga_store_orders_test_20261120` và `manga_store_admin_test_20261122` có ghi dữ liệu kiểm thử.
+- Buy Now: quote/tổng server, không cần cart, cart khác sản phẩm giữ nguyên, validation/session/CSRF, COD unpaid, snapshot, ownership, cancel một lần, payment INSERT lỗi rollback, đổi giá, archived/hết kho/không tìm thấy, cùng key đồng thời và retry mất phản hồi, hai khách tranh kho.
+- Chrome headless: `check_unified_checkout.mjs` kiểm tra các nguồn Buy Now, tự quay lại sau login, quantity 3, form VI/EN, 1440/900/390, mouse hover, keyboard Enter, mobile touch, mất response sau commit và refresh không thêm POST, lịch sử/hủy, cart badge/rows giữ nguyên. `check_orders.mjs` kiểm tra lại Cart Checkout/history/cancel/isolation.
+- Hồi quy GUI: `check_discovery.mjs` (Hero/series/search/gallery màu gốc), `check_flipbook.mjs`, `check_unified_demo.mjs`, `check_demo_checkout.mjs`.
+- Screenshot trước/sau: `frontend/.artifacts/12c-before-*` / `12c-after-*`; checkout thật `12c-buy-checkout-{1440,900,390}-en.png`, `12c-buy-checkout-390-vi.png`, `12c-buy-success-recovered.png`. Preview cũ có bằng chứng giai đoạn 12B trong `12b-buy-now-live-1440-vi.png`. Cart Checkout dùng `orders-checkout-desktop-en.png` và `orders-checkout-mobile-en.png`.
+
+Giới hạn: không thêm bộ chỉnh quantity tại Checkout; lấy quantity từ Card/PDP. Demo không tạo đơn. Chưa có thanh toán thật/hoàn tiền. Kiểm thử mạng mô phỏng làm rơi response HTTP đã commit, không phải kiểm thử mất điện MariaDB.
+
+### Sao lưu và khôi phục
+
+Backup đầy đủ trước triển khai: `C:/xampp/manga-store-backups/2026-11-24-unified-checkout/manga_store.sql`; snapshot `before.json`, source cũ trong cùng thư mục. Không cần khôi phục DB khi chỉ rollback code vì không migration/ghi thử lên DB chính. Nếu cần phục hồi dữ liệu thật, dừng thao tác ghi, sao lưu trạng thái mới và import dump bằng mysql/phpMyAdmin sau khi xác nhận phạm vi; không ghi đè các đơn phát sinh sau bản backup một cách tự động.
+
+
+Các file thay đổi riêng trong 12C:
+
+- Backend: `backend/src/OrderRepository.php`, `backend/src/orders_bootstrap.php`.
+- Frontend: `frontend/src/App.tsx`, `frontend/src/components/ApiCheckout.tsx`, `frontend/src/services/orderService.ts`, `frontend/src/shop/BuyNowCheckout.tsx`, `frontend/src/shop/buyNowIntent.ts`; thêm CSS chỉ cho Product Card actions `frontend/src/shop/product-actions.css`.
+- Kiểm thử mới: `backend/tests/test_buy_now.py`, `check_unified_checkout.mjs`, `check_unified_demo.mjs`, `check_unified_before.mjs`; cập nhật selector action trong `check_discovery.mjs` để dùng ảnh/tên thay nút Xem chi tiết đã bỏ.
+- Tài liệu: `README.md`, `docs/API.md`. Các thay đổi 12B có sẵn trong working tree được giữ nguyên.
+
+Kết quả cuối: production build, TypeScript và PHP lint đạt. Chrome Live kiểm tra đủ 23 Product Detail và 37 ảnh/gallery, không lỗi JavaScript nghiêm trọng hoặc ảnh sản phẩm hỏng. Kiểm thử Cart nhiều sản phẩm xác nhận hai order_items, tổng backend chính xác, clear cart khi thành công, replay payload cũ hoặc mode=cart cùng một đơn và hủy hoàn kho một lần. Hash dữ liệu **và schema của cả 17 bảng chính trước/sau trùng nhau**; vẫn 23 active, 8 archived, 18 series, 37 ảnh, không có đơn kiểm thử trên DB chính. Các hàm Home, CharacterArt, Header, Footer khớp source trước sửa; CSS toàn cục và các trang Admin/Reports không sửa trong 12C. Bằng chứng tổng hợp ở `frontend/.artifacts/12c-tests.json` và `12c-preservation.json`. Không tuyên bố pixel-perfect hoặc đã kiểm thử mọi môi trường mạng/phần cứng.

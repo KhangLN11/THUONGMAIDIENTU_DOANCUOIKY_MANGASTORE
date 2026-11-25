@@ -8,6 +8,7 @@ import {
   type Quote,
   type Order,
   type CheckoutInput,
+  type CheckoutSource,
 } from "../services/orderService";
 import { AuthError } from "../services/authService";
 import { ProductImage } from "./ProductImage";
@@ -20,7 +21,9 @@ export function ApiCheckout({
   onAccount,
   onOrders,
   onPlaced,
+  source,
 }: {
+  source?: CheckoutSource;
   cart: Product[];
   pending: boolean;
   onHome: () => void;
@@ -28,7 +31,7 @@ export function ApiCheckout({
   onOrders: () => void;
   onPlaced: () => Promise<void>;
 }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const { t, language, formatCurrency } = useI18n();
   const money = (v: number) => formatCurrency(v, "VND");
   const [quote, setQuote] = useState<Quote | null>(null),
@@ -49,7 +52,10 @@ export function ApiCheckout({
     inFlight = useRef(false),
     alive = useRef(true);
   const owner = user?.id;
-  const storageKey = "manga-checkout-intent-" + owner;
+  const storageKey =
+    "manga-checkout-intent-" +
+    owner +
+    (source ? "-buy-" + source.product_id + "-" + source.quantity : "");
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -81,7 +87,7 @@ export function ApiCheckout({
           if (!(e instanceof AuthError) || e.status !== 404) throw e;
         }
       }
-      const q = await getQuote();
+      const q = await getQuote(source);
       if (active) setQuote(q);
     })()
       .catch((e) => {
@@ -127,6 +133,7 @@ export function ApiCheckout({
         }
         if (!/^[a-f0-9]{32}$/.test(key)) throw new AuthError("CHECKOUT_STORAGE");
         request.current = {
+          ...source,
           idempotency_key: key,
           quote_fingerprint: quote.quote_fingerprint,
           recipient_name: normalized.recipient_name,
@@ -145,13 +152,7 @@ export function ApiCheckout({
       if (!alive.current) return;
       const code = e instanceof AuthError ? e.code : "NETWORK_ERROR";
       setError(code);
-      if (code === "IDEMPOTENCY_CONFLICT" && request.current) {
-        try {
-          await finish(await recoverOrder(request.current.idempotency_key));
-        } catch {
-          /* Preserve the intent for the next retry. */
-        }
-      } else if (
+      if (
         [
           "QUOTE_CHANGED",
           "INSUFFICIENT_STOCK",
@@ -162,7 +163,7 @@ export function ApiCheckout({
       ) {
         request.current = null;
         try {
-          setQuote(await getQuote());
+          setQuote(await getQuote(source));
         } catch {
           /* Keep the original error visible. */
         }
@@ -175,13 +176,18 @@ export function ApiCheckout({
   const update = (name: keyof typeof fields, value: string) =>
     setFields((f) => ({ ...f, [name]: value }));
   return (
-    <main className="checkout" data-product-text data-checkout-api>
+    <main
+      className="checkout"
+      data-product-text
+      data-checkout-api
+      data-checkout-source={source ? "buy_now" : "cart"}
+    >
       <section>
         <button className="brand checkout-brand" onClick={onHome}>
           <span>MU</span>MANGA UNIVERSE
         </button>
         <p className="steps">
-          {t("CART")} — <b>{t("INFORMATION")}</b> — {t("SHIPPING")} — COD
+          {t(source ? "BUY NOW" : "CART")} — <b>{t("INFORMATION")}</b> — {t("SHIPPING")} — COD
         </p>
         <h1>
           {t(order ? "order.success" : "SHIPPING")}
@@ -285,9 +291,25 @@ export function ApiCheckout({
             </button>
           </form>
         ) : null}
+        {source && !order && (
+          <button type="button" className="buy-now-cancel" disabled={busy} onClick={onHome}>
+            {t("buy.cancel")}
+          </button>
+        )}
         {error && (
           <div role="alert">
             <p>{t("order.error." + error)}</p>
+            {error === "UNAUTHENTICATED" && (
+              <button
+                type="button"
+                className="ink-btn"
+                onClick={() => {
+                  void refresh().then(onAccount);
+                }}
+              >
+                {t("buy.login")}
+              </button>
+            )}
             {!quote && !order && (
               <button className="ink-btn ink-btn-ghost" onClick={() => setAttempt((x) => x + 1)}>
                 {t("TRY AGAIN")}

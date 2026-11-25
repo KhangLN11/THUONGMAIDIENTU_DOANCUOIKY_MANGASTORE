@@ -13,12 +13,15 @@ final class OrderRepository
         if(!ctype_digit($fee)||strlen($fee)>9)throw new RuntimeException('Invalid checkout configuration.');
         $this->fee=(int)$fee;
     }
-    private function cart(bool $lock=false): array
+    private function cart(bool $lock=false, ?array $selection=null): array
     {
-        $s=$this->pdo->prepare('SELECT id FROM carts WHERE user_id=?'.($lock?' FOR UPDATE':''));$s->execute([$this->userId]);$id=$s->fetchColumn();
-        if($id===false)throw new OrderException('CART_EMPTY');
-        $s=$this->pdo->prepare('SELECT product_id,quantity FROM cart_items WHERE cart_id=? ORDER BY product_id'.($lock?' FOR UPDATE':''));$s->execute([$id]);$items=$s->fetchAll();
-        if(!$items)throw new OrderException('CART_EMPTY');
+        $id=null;
+        if($selection===null){
+            $s=$this->pdo->prepare('SELECT id FROM carts WHERE user_id=?'.($lock?' FOR UPDATE':''));$s->execute([$this->userId]);$id=$s->fetchColumn();
+            if($id===false)throw new OrderException('CART_EMPTY');
+            $s=$this->pdo->prepare('SELECT product_id,quantity FROM cart_items WHERE cart_id=? ORDER BY product_id'.($lock?' FOR UPDATE':''));$s->execute([$id]);$items=$s->fetchAll();
+            if(!$items)throw new OrderException('CART_EMPTY');
+        }else{$items=[$selection];}
         $total=0;$fingerprint=[];$lines=[];
         foreach($items as $item){
             $s=$this->pdo->prepare('SELECT id,sku,name_vi,name_en,status,stock_quantity,price_vnd,sale_price_vnd FROM products WHERE id=?'.($lock?' FOR UPDATE':''));$s->execute([$item['product_id']]);$p=$s->fetch();
@@ -33,23 +36,25 @@ final class OrderRepository
         }
         if($total>99999999999999-$this->fee)throw new OrderException('AMOUNT_OUT_OF_RANGE',422);
         return ['cart_id'=>(int)$id,'items'=>$lines,'subtotal_vnd'=>$total,'shipping_fee_vnd'=>$this->fee,'discount_vnd'=>0,'total_vnd'=>$total+$this->fee,
-            'currency'=>'VND','quote_fingerprint'=>hash('sha256',json_encode([$fingerprint,$this->fee],JSON_THROW_ON_ERROR))];
+            'currency'=>'VND','quote_fingerprint'=>hash('sha256',json_encode($selection===null?[$fingerprint,$this->fee]:['buy_now',$fingerprint,$this->fee],JSON_THROW_ON_ERROR))];
     }
-    public function quote():array{return $this->cart();}
+    public function quote(?array $selection=null):array{return $this->cart(false,$selection);}
     private function byKey(string $key,bool $lock=false):?array{
         $s=$this->pdo->prepare('SELECT id,checkout_request_hash FROM orders WHERE user_id=? AND idempotency_key=?'.($lock?' FOR UPDATE':''));$s->execute([$this->userId,$key]);return $s->fetch()?:null;
     }
     public function create(array $input):array
     {
+        $selection=($input['mode']??'cart')==='buy_now'?['product_id'=>$input['product_id'],'quantity'=>$input['quantity']]:null;
+        // Legacy cart canonical payload stays byte-compatible; buy_now includes mode and selection.
         $key=$input['idempotency_key'];$canonical=$input;unset($canonical['idempotency_key']);$hash=hash('sha256',json_encode($canonical,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
         $existing=$this->byKey($key);if($existing)return $this->replay($existing,$hash);
         for($attempt=0;;$attempt++){
             try{
                 $this->pdo->beginTransaction();
                 // Lock the same cart row as CommerceRepository before any product lock.
-                $s=$this->pdo->prepare('SELECT id FROM carts WHERE user_id=? FOR UPDATE');$s->execute([$this->userId]);if($s->fetchColumn()===false)throw new OrderException('CART_EMPTY');
+                if($selection===null){$s=$this->pdo->prepare('SELECT id FROM carts WHERE user_id=? FOR UPDATE');$s->execute([$this->userId]);if($s->fetchColumn()===false)throw new OrderException('CART_EMPTY');}
                 $existing=$this->byKey($key,true);if($existing){$this->pdo->commit();return $this->replay($existing,$hash);}
-                $quote=$this->cart(true);
+                $quote=$this->cart(true,$selection);
                 if(!hash_equals($quote['quote_fingerprint'],$input['quote_fingerprint']))throw new OrderException('QUOTE_CHANGED');
                 $code='MS-'.date('Ymd').'-'.strtoupper(bin2hex(random_bytes(8)));
                 $address=[$input['recipient_name'],$input['recipient_phone'],$input['province'],$input['district'],$input['ward'],$input['address_line']];
@@ -63,7 +68,7 @@ final class OrderRepository
                 }
                 $s=$this->pdo->prepare("INSERT INTO payments(order_id,method,status,amount_vnd) VALUES(?,'cod','pending',?)");$s->execute([$id,$quote['total_vnd']]);
                 $s=$this->pdo->prepare("INSERT INTO shipments(order_id,status) VALUES(?,'pending')");$s->execute([$id]);
-                $s=$this->pdo->prepare('DELETE FROM cart_items WHERE cart_id=?');$s->execute([$quote['cart_id']]);
+                if($selection===null){$s=$this->pdo->prepare('DELETE FROM cart_items WHERE cart_id=?');$s->execute([$quote['cart_id']]);}
                 $this->pdo->commit();return ['order'=>$this->detail($id),'replayed'=>false];
             }catch(Throwable $e){
                 if($this->pdo->inTransaction())$this->pdo->rollBack();

@@ -1,0 +1,48 @@
+.product-card .shop-image-open {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.product-card .shop-product-name {
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.product-card .wish {
+  z-index: 4;
+}
+.product-card:focus-within .quick-actions {
+  transform: translateY(0);
+}
+.product-card .shop-image-open:focus-visible,
+.product-card .shop-product-name:focus-visible,
+.product-card .quick-actions button:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: -4px;
+}
+.product-card .quick-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (hover: none), (max-width: 600px) {
+  .product-card .quick-actions {
+    transform: translateY(0);
+  }
+  .product-card .quick-actions button {
+    min-height: 48px;
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card .quick-actions {
+    transition: none;
+  }
+}

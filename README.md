@@ -106,3 +106,10 @@ Series, Collections và About dùng lại Barlow Condensed/Inter từ Home, có 
 ## Giai đoạn 12A — Admin Products & tạo Series
 
 Đã áp dụng migration002 được duyệt, chỉ thêm UNIQUE(title) cho manga_series, giữ18 series và toàn bộ dữ liệu hiện có. Admin → Products có overview thật, search/category/series/status/low-stock/sort, phân trang10/20/50 và form4 nhóm. Nút + TẠO BỘ TRUYỆN mở dialog tại chỗ, tự chọn ID thật và giữ nội dung/file ảnh đang nhập. Giữ quy tắc tồn kho và luồng ảnh/draft hiện có. Xem [docs/API.md](docs/API.md) phần “12A triển khai sau phê duyệt” cho API, backup/rollback, screenshot và kiểm thử MariaDB/React thực tế.
+
+## Giai đoạn 12B — Shop & Buy Now an toàn
+
+Shop giữ Hero/Card Manga Editorial, có toolbar/sidebar lọc thật, grid4/2/1 cột tại1440/900/390 và hai action Mua ngay/Thêm vào giỏ. Ảnh/tên mở đúng Product Detail, Back giữ bộ lọc. Buy Now lưu riêng ID/quantity/mode, mở #checkout/buy-now/<id> với đúng một sản phẩm, không thêm/xóa cart. Backend hiện chỉ checkout từ cart: xác nhận đơn Buy Now đang bị chặn và có thông báo rõ; không tạo thành công giả. Checkout COD từ cart giữ nguyên. Không sửa PHP/MySQL/catalog. Xem [docs/API.md](docs/API.md) phần12B cho giới hạn, file và bằng chứng Chrome/build.
+
+
+Giai đoạn 12C: Live Buy Now dùng cùng Checkout COD với Cart, hỗ trợ quantity từ Product Detail, quote/tổng tiền server và idempotency; không ghi/xóa cart. Product Cards thống nhất Mua ngay / Thêm vào giỏ, ảnh và tên mở chi tiết, bỏ action bar lặp tại Series/Collections. Demo không gọi Order API. Chi tiết contract, kiểm thử cô lập, screenshot và backup ở mục Giai đoạn 12C trong [docs/API.md](docs/API.md).
