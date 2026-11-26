@@ -1061,7 +1061,7 @@ function Footer({ go }: { go: (p: Page, id?: number) => void }) {
         </div>
         <div>
           <h4>SUPPORT</h4>
-          <button>CONTACT</button>
+          <button onClick={() => { if (window.location.hash === "#about/contact") window.dispatchEvent(new HashChangeEvent("hashchange")); else window.location.hash = "about/contact"; }}>CONTACT</button>
           <button>SHIPPING & RETURNS</button>
           <button>FAQ</button>
           <button>AUTHENTICITY</button>

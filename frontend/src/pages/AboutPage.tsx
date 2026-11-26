@@ -1,3 +1,4 @@
+import { AboutContact } from "./AboutContact";
 import { useI18n } from "../i18n";
 import "../discovery/editorial-ui.css";
 import "./about.css";
@@ -6,9 +7,9 @@ type Destination = "series" | "shop" | "collections";
 export function AboutPage({ go }: { go: (page: Destination) => void }) {
   const { t } = useI18n();
   const worlds = [
-    { key: "manga", page: "series", cta: "seriesCta" },
-    { key: "novel", page: "shop", cta: "shopCta" },
-    { key: "figure", page: "collections", cta: "figureCta" },
+    { key: "manga", page: "series", cta: "about.seriesCta" },
+    { key: "novel", page: "shop", cta: "about16b.productsCta" },
+    { key: "figure", page: "collections", cta: "about16b.figureCta" },
   ] as const;
   return (
     <main className="about-page" data-about-page data-product-text>
@@ -28,9 +29,34 @@ export function AboutPage({ go }: { go: (page: Destination) => void }) {
       <section className="about-story">
         <p className="about-kicker">02 / MANGA UNIVERSE</p>
         <h2>{t("about.storyTitle")}</h2>
-        <p>{t("about.story")}</p>
+        <div className="about-story-columns">
+          <div>
+            <h3>{t("about16b.storyFirst")}</h3>
+            <p>{t("about16b.story0")}</p>
+            <p>{t("about16b.story1")}</p>
+          </div>
+          <div>
+            <h3>{t("about16b.storySecond")}</h3>
+            <p className="about-story-statement">{t("about16b.story2")}</p>
+            <p>{t("about16b.story3")}</p>
+            <p>{t("about16b.story4")}</p>
+          </div>
+        </div>
+      </section>
+      <section className="about-values">
+        <p className="about-kicker">03 / MANGA UNIVERSE</p>
+        <h2>{t("about16b.values")}</h2>
+        <div className="about-grid">
+          {["discover", "follow", "transparency"].map((key) => (
+            <article key={key}>
+              <h3>{t(`about16b.${key}`)}</h3>
+              <p>{t(`about16b.${key}Text`)}</p>
+            </article>
+          ))}
+        </div>
       </section>
       <section className="about-worlds">
+        <p className="about-kicker">04 / MANGA UNIVERSE</p>
         <h2>{t("about.worlds")}</h2>
         <div className="about-grid">
           {worlds.map((world, index) => (
@@ -39,24 +65,14 @@ export function AboutPage({ go }: { go: (page: Destination) => void }) {
               <h3>{t(`about.${world.key}`)}</h3>
               <p>{t(`about.${world.key}Text`)}</p>
               <button className="ink-btn" onClick={() => go(world.page)}>
-                <span>{t(`about.${world.cta}`)}</span>
+                <span>{t(world.cta)}</span>
                 <span aria-hidden="true">↗</span>
               </button>
             </article>
           ))}
         </div>
       </section>
-      <section className="about-values">
-        <h2>{t("about.spirit")}</h2>
-        <div className="about-grid">
-          {["discover", "collect", "connect"].map((key) => (
-            <article key={key}>
-              <h3>{t(`about.${key}`)}</h3>
-              <p>{t(`about.${key}Text`)}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <AboutContact />
       <section className="about-ending">
         <h2>{t("about.next")}</h2>
         <div>

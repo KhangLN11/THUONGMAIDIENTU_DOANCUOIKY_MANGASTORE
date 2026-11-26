@@ -5,6 +5,7 @@ export function discoveryRoute(
   slug: string | null;
   id: number | null;
 } | null {
+  if (hash === "#about/contact") return { page: "about", slug: null, id: null };
   if (["#home", "#shop", "#about", "#manifesto"].includes(hash))
     return {
       page: hash === "#manifesto" ? "about" : (hash.slice(1) as "home" | "shop" | "about"),

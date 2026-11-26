@@ -155,3 +155,8 @@ Khôi phục giao diện nếu cần: dùng bản sao source trước Giai đo�
 ## Giai đoạn 15 — Product Detail Accordion
 
 Ba mục thông tin đã có toggle độc lập, VI/EN, keyboard/touch và nội dung theo catalog xác minh. Xem [báo cáo, nguồn metadata, giới hạn chính sách và screenshot](docs/PHASE15_PRODUCT_ACCORDION.md). Không migration hoặc thay dữ liệu chính.
+
+
+## Giai đoạn 16B — About & Contact
+
+Trang `#about` có câu chuyện thương hiệu VI/EN, giá trị cho độc giả, Email/Điện thoại/Facebook và Google Maps đúng tọa độ được cung cấp. Footer Liên hệ mở `#about/contact`. Xem [báo cáo, cấu hình và kết quả kiểm thử](docs/PHASE16B_ABOUT_CONTACT.md).
