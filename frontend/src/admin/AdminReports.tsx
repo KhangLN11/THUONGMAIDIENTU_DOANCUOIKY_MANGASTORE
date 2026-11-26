@@ -166,12 +166,14 @@ export function AdminReports() {
                   "low_stock",
                   "sold_quantity",
                   "collected_cod_vnd",
+                  "collected_bank_vnd",
+                  "collected_total_vnd",
                 ] as const
               ).map((k) => (
                 <article className="admin-card" key={k}>
                   <span>{t("report.metric." + k)}</span>
                   <b data-report-metric={k}>
-                    {k === "collected_cod_vnd" ? cash(data.overview[k]) : count(data.overview[k])}
+                    {["collected_cod_vnd","collected_bank_vnd","collected_total_vnd"].includes(k) ? cash(String(data.overview[k])) : count(Number(data.overview[k]))}
                   </b>
                   {["total_customers", "active_products", "low_stock"].includes(k) && (
                     <small>{t("report.current")}</small>

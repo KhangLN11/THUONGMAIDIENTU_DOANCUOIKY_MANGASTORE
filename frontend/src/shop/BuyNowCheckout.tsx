@@ -1,3 +1,4 @@
+import { DemoCheckout } from "../checkout/DemoCheckout";
 import { useRef } from "react";
 import { ApiCheckout } from "../components/ApiCheckout";
 import { clearBuyNowIntent } from "./buyNowIntent";
@@ -5,9 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../i18n";
 import { useProduct, useProducts } from "../hooks/useProducts";
 import { USE_PRODUCTS_API } from "../config/products";
-import { ProductImage } from "../components/ProductImage";
-import { ProductState } from "../components/ProductState";
-import type { Product } from "../types/product";
+import { CheckoutFrame } from "../checkout/CheckoutView";
 import type { BuyNowIntent } from "./buyNowIntent";
 export function BuyNowResume({
   intent,
@@ -55,7 +54,7 @@ export function BuyNowCheckout(props: Props) {
       <DemoPreview {...shared} />
     )
   ) : (
-    <Preview {...props} product={null} status="success" />
+    <ExpiredCheckout onShop={props.onShop} />
   );
 }
 function LiveCheckout(props: Props) {
@@ -83,88 +82,22 @@ function LiveCheckout(props: Props) {
 }
 function DemoPreview(props: Props) {
   const { products } = useProducts();
+  const p = products.find((p) => p.id === props.intent!.productId);
   return (
-    <Preview
-      {...props}
-      product={products.find((p) => p.id === props.intent!.productId) ?? null}
-      status="success"
+    <DemoCheckout
+      cart={p ? Array.from({ length: props.intent!.quantity }, () => p) : []}
+      onShop={props.onShop}
     />
   );
 }
-function Preview({
-  intent,
-  product,
-  status,
-  retry,
-  notFound,
-  onShop,
-  onAccount,
-}: Props & {
-  product: Product | null;
-  status: "loading" | "error" | "success";
-  retry?: () => void;
-  notFound?: boolean;
-}) {
-  const { user } = useAuth(),
-    { t, formatCurrency } = useI18n();
-  const available = !!product && (product.source !== "api" || (product.stockQuantity ?? 0) > 0);
+function ExpiredCheckout({ onShop }: { onShop: () => void }) {
+  const { t } = useI18n();
   return (
-    <main
-      className="checkout buy-now-checkout"
-      data-product-text
-      data-buy-now-checkout
-      data-buy-now-id={intent?.productId ?? ""}
-    >
-      <section>
-        <button className="brand checkout-brand" onClick={onShop}>
-          <span>MU</span>MANGA UNIVERSE
-        </button>
-        <p className="steps">
-          {t("BUY NOW")} — {t("order.summary")}
-        </p>
-        <h1>{t("BUY NOW")}</h1>
-        {!intent ? (
-          <p role="alert">{t("buy.expired")}</p>
-        ) : status !== "success" ? (
-          <ProductState status={status} retry={retry} notFound={notFound} />
-        ) : !product ? (
-          <p role="alert">{t("buy.unavailable")}</p>
-        ) : (
-          <>
-            <p role="status">{t(USE_PRODUCTS_API ? "buy.limitation" : "buy.demo")}</p>
-            {!available && <p role="alert">{t("OUT OF STOCK")}</p>}
-            <p>{t("buy.cartSafe")}</p>
-            <button type="button" className="ink-btn" disabled aria-describedby="buy-now-limit">
-              <span>{t("buy.confirm")}</span>
-            </button>
-            <p id="buy-now-limit">{t("buy.noOrder")}</p>
-            {!user && USE_PRODUCTS_API && (
-              <button className="ink-btn ink-btn-ghost" onClick={onAccount}>
-                <span>{t("buy.login")}</span>
-              </button>
-            )}
-          </>
-        )}
-        <button className="buy-now-cancel" onClick={onShop}>
-          {t("buy.cancel")}
-        </button>
-      </section>
-      <aside>
-        <span>{t("order.summary")}</span>
-        {product && (
-          <div className="checkout-item" data-buy-now-product={product.id}>
-            <ProductImage src={product.image} alt={product.name} />
-            <div>
-              <b>{product.name}</b>
-              <small>× 1</small>
-            </div>
-            <strong>
-              {formatCurrency(product.price, product.source === "api" ? "VND" : "USD")}
-            </strong>
-          </div>
-        )}
-        <p>{t("buy.priceNote")}</p>
-      </aside>
-    </main>
+    <CheckoutFrame step={1} summary={<p>{t("buy.expired")}</p>}>
+      <p role="alert">{t("buy.expired")}</p>
+      <button className="checkout-button primary" onClick={onShop}>
+        {t("checkout.continueShopping")}
+      </button>
+    </CheckoutFrame>
   );
 }

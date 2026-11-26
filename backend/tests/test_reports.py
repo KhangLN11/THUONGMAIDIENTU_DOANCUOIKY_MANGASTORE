@@ -44,6 +44,7 @@ try:
  d=admin.req('admin/reports/overview.php?'+q)['data'];o=d['overview']
  assert {k:o[k] for k in ['total_orders','pending_orders','processing_orders','completed_orders','cancelled_orders','sold_quantity']}=={'total_orders':10,'pending_orders':1,'processing_orders':3,'completed_orders':5,'cancelled_orders':1,'sold_quantity':8},o
  assert o['created_order_value_vnd']=='3000000' and o['average_order_vnd']=='300000' and o['collected_cod_vnd']=='560000' and o['collected_orders']==2 and o['average_collected_vnd']=='280000',o
+ assert o['collected_bank_vnd']=='130000' and o['collected_total_vnd']=='690000'
  assert o['total_customers']==empty['overview']['total_customers']+1 and o['active_products']==empty['overview']['active_products']+3
  ok('exact KPI oracle: multi-item order counted once, cancelled value separate, delivered unpaid/invalid receipt/bank transfer excluded from COD')
  assert sum(x['total_orders'] for x in d['statuses'])==10
@@ -65,7 +66,7 @@ try:
  for ep,key in [('orders','statuses'),('products','products'),('categories','categories')]:assert admin.req('admin/reports/'+ep+'.php?'+q)['data']['items']==d[key]
  for typ in ['revenue','orders','products','inventory']:
   raw=admin.req('admin/reports/export.php?'+q+'&type='+typ+'&language=vi',csv_=True);text=raw.decode('utf-8-sig');rows=list(csv.reader(io.StringIO(text)));assert len(rows)>1 and '\ufffd' not in text and all(r[0]=='SIMULATED' for r in rows[1:])
-  if typ=='revenue':assert 'COD đã thu (VND)' in rows[0] and sum(int(r[-1]) for r in rows[1:])==560000
+  if typ=='revenue':assert 'COD đã thu (VND)' in rows[0] and sum(int(r[rows[0].index('COD đã thu (VND)')]) for r in rows[1:])==560000
   if typ=='orders':assert len(rows)==11 and sum(int(r[4]) for r in rows[1:])==3000000
   if typ in ['products','inventory']:
    assert '\'=HYPERLINK' in text and '\'+SIMULATED Novel' in text

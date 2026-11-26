@@ -10,3 +10,5 @@
 /backend/config/database.local.php
 
 !frontend/.env.example
+
+/backend/config/payment.local.php

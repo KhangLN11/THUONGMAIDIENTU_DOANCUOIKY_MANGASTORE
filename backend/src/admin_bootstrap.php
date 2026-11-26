@@ -47,7 +47,7 @@ function admin_run(string $action):void{
    case 'orders':$data=$repo->orders(admin_query('orders'));break;
    case 'order':$data=$repo->order(admin_id($_GET['id']??null));break;
    case 'order-status':admin_fields($d,['order_id','status','expected_status']);$data=$repo->transition(['order_id'=>admin_num($d['order_id']??null),'status'=>admin_enum($d['status']??null,['pending','confirmed','processing','shipping','delivered','cancelled']),'expected_status'=>admin_enum($d['expected_status']??null,['pending','confirmed','processing','shipping','delivered','cancelled'])]);break;
-   case 'payment-confirm':admin_fields($d,['order_id','received','reference']);if(($d['received']??null)!==true)throw new AdminException('PAYMENT_CONFIRMATION_REQUIRED');$data=$repo->collect(['order_id'=>admin_num($d['order_id']??null),'reference'=>admin_text($d['reference']??null,150)]);break;
+   case 'payment-confirm':admin_fields($d,['order_id','received','reference','amount_vnd','payment_reference']);if(($d['received']??null)!==true)throw new AdminException('PAYMENT_CONFIRMATION_REQUIRED');$data=$repo->collect(['order_id'=>admin_num($d['order_id']??null),'reference'=>admin_text($d['reference']??null,150),'amount_vnd'=>isset($d['amount_vnd'])?admin_num($d['amount_vnd'],0,99999999999999):null,'payment_reference'=>isset($d['payment_reference'])?admin_text($d['payment_reference'],25):null]);break;
    case 'products':$data=$repo->products(admin_query('products'));break;
    case 'product':$data=$repo->productDetail(admin_id($_GET['id']??null));break;
    case 'metadata':$data=$repo->metadata();break;

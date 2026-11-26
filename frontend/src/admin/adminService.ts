@@ -208,8 +208,8 @@ export const transitionOrder = async (o: Order, status: string): Promise<Order> 
   parseOrder(
     await request("order-status.php", { order_id: o.id, expected_status: o.status, status }),
   );
-export const confirmPayment = async (o: Order, reference: string): Promise<Order> =>
-  parseOrder(await request("payment-confirm.php", { order_id: o.id, received: true, reference }));
+export const confirmPayment = async (o: Order, reference: string, amount?:number, paymentReference?:string): Promise<Order> =>
+  parseOrder(await request("payment-confirm.php", { order_id: o.id, received: true, reference, ...(o.payment_method==="bank_transfer"?{amount_vnd:amount,payment_reference:paymentReference}:{}) }));
 export const getCustomers = async (query: string) =>
   page(await request("customers.php" + query), (v) => {
     const c = obj(v);

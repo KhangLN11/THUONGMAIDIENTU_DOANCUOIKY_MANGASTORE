@@ -1,4 +1,14 @@
 import { sessionRequest, AuthError } from "./authService";
+export type PaymentInstructions = {
+  bank_name: string;
+  bank_bin: string | null;
+  account_number: string | null;
+  account_name: string | null;
+  amount_vnd: number;
+  reference: string;
+  qr_payload: string;
+  simulation: boolean;
+};
 export type QuoteItem = {
   product_id: number;
   sku: string;
@@ -9,12 +19,14 @@ export type QuoteItem = {
   line_total_vnd: number;
 };
 export type Quote = {
+  payment_simulation:boolean;
   items: QuoteItem[];
   subtotal_vnd: number;
   shipping_fee_vnd: number;
   discount_vnd: number;
   total_vnd: number;
   quote_fingerprint: string;
+  payment_options: { cod: boolean; bank_transfer: boolean; vietqr: boolean };
 };
 export type CheckoutSource = { mode: "buy_now"; product_id: number; quantity: number };
 export type CheckoutInput = {
@@ -30,9 +42,10 @@ export type CheckoutInput = {
   ward: string;
   address_line: string;
   customer_note: string | null;
-  payment_method: "cod";
+  payment_method: "cod" | "bank_transfer";
 };
 export type OrderItem = {
+  image_url: string | null;
   product_id: number | null;
   sku_snapshot: string;
   name_vi_snapshot: string;
@@ -47,8 +60,11 @@ export type OrderSummary = {
   status: string;
   total_vnd: number;
   created_at: string;
+  payment_method: string | null;
+  payment_status: string | null;
 };
 export type Order = OrderSummary & {
+  simulation:boolean;
   recipient_name: string;
   recipient_phone: string;
   province: string;
@@ -63,6 +79,7 @@ export type Order = OrderSummary & {
   payment_status: string | null;
   paid_at: string | null;
   shipment_status: string | null;
+  payment_instructions: PaymentInstructions | null;
   items: OrderItem[];
 };
 function obj(v: unknown): Record<string, unknown> {
@@ -89,6 +106,22 @@ function summary(v: unknown): OrderSummary {
     status: str(o.status),
     total_vnd: num(o.total_vnd),
     created_at: str(o.created_at),
+    payment_method: o.payment_method == null ? null : str(o.payment_method),
+    payment_status: o.payment_status == null ? null : str(o.payment_status),
+  };
+}
+function instructions(value: unknown): PaymentInstructions | null {
+  if (value == null) return null;
+  const i = obj(value);
+  return {
+    bank_name: str(i.bank_name),
+    bank_bin: nullable(i.bank_bin),
+    account_number: nullable(i.account_number),
+    account_name: nullable(i.account_name),
+    amount_vnd: num(i.amount_vnd),
+    reference: str(i.reference),
+    qr_payload: str(i.qr_payload),
+    simulation: i.simulation === true,
   };
 }
 function order(v: unknown): Order {
@@ -96,6 +129,7 @@ function order(v: unknown): Order {
   if (!Array.isArray(o.items)) throw new AuthError("INVALID_RESPONSE");
   return {
     ...summary(o),
+    simulation:o.simulation===true,
     recipient_name: str(o.recipient_name),
     recipient_phone: str(o.recipient_phone),
     province: str(o.province),
@@ -110,9 +144,11 @@ function order(v: unknown): Order {
     payment_status: nullable(o.payment_status),
     paid_at: nullable(o.paid_at),
     shipment_status: nullable(o.shipment_status),
+    payment_instructions: instructions(o.payment_instructions),
     items: o.items.map((v) => {
       const i = obj(v);
       return {
+        image_url: i.image_url == null ? null : str(i.image_url),
         product_id: i.product_id === null ? null : num(i.product_id),
         sku_snapshot: str(i.sku_snapshot),
         name_vi_snapshot: str(i.name_vi_snapshot),
@@ -153,6 +189,14 @@ export async function getQuote(source?: CheckoutSource): Promise<Quote> {
     discount_vnd: num(o.discount_vnd),
     total_vnd: num(o.total_vnd),
     quote_fingerprint: str(o.quote_fingerprint),
+    payment_simulation:o.payment_simulation===true,
+    payment_options: o.payment_options
+      ? {
+          cod: obj(o.payment_options).cod === true,
+          bank_transfer: obj(o.payment_options).bank_transfer === true,
+          vietqr: obj(o.payment_options).vietqr === true,
+        }
+      : { cod: true, bank_transfer: false, vietqr: false },
   };
 }
 export async function createOrder(input: CheckoutInput): Promise<Order> {

@@ -1172,3 +1172,112 @@ Các file thay đổi riêng trong 12C:
 - Tài liệu: `README.md`, `docs/API.md`. Các thay đổi 12B có sẵn trong working tree được giữ nguyên.
 
 Kết quả cuối: production build, TypeScript và PHP lint đạt. Chrome Live kiểm tra đủ 23 Product Detail và 37 ảnh/gallery, không lỗi JavaScript nghiêm trọng hoặc ảnh sản phẩm hỏng. Kiểm thử Cart nhiều sản phẩm xác nhận hai order_items, tổng backend chính xác, clear cart khi thành công, replay payload cũ hoặc mode=cart cùng một đơn và hủy hoàn kho một lần. Hash dữ liệu **và schema của cả 17 bảng chính trước/sau trùng nhau**; vẫn 23 active, 8 archived, 18 series, 37 ảnh, không có đơn kiểm thử trên DB chính. Các hàm Home, CharacterArt, Header, Footer khớp source trước sửa; CSS toàn cục và các trang Admin/Reports không sửa trong 12C. Bằng chứng tổng hợp ở `frontend/.artifacts/12c-tests.json` và `12c-preservation.json`. Không tuyên bố pixel-perfect hoặc đã kiểm thử mọi môi trường mạng/phần cứng.
+
+
+## Giai đoạn 13 — Checkout ba bước và thanh toán Sandbox (25/11/2026)
+
+Checkout Cart và Buy Now dùng chung `ApiCheckout` và các thành phần trong `frontend/src/checkout/`:
+
+1. **Thông tin**: người nhận, điện thoại, tỉnh/thành phố, quận/huyện tùy chọn, phường/xã, địa chỉ và ghi chú. Validation tại trường; giữ dữ liệu khi chuyển bước hoặc lỗi API. Nhập địa chỉ thủ công, không tạo danh sách hành chính giả. Chỉ một phương thức vận chuyển tiêu chuẩn; phí do PHP quote (mặc định 30.000 VND).
+2. **Thanh toán**: COD, chuyển khoản, VietQR. Chuyển từ bước 1 sang bước 2 không tạo đơn. Order Summary dùng giá, đơn giá, quantity, subtotal, shipping và total của backend. Tổng tiền xuất hiện gần nút xác nhận.
+3. **Hoàn tất**: chỉ xuất hiện sau khi xác minh đơn đã commit, tại `#checkout/complete/<id>`. Refresh/Back/Forward không tự POST tạo đơn. Có snapshot sản phẩm/địa chỉ, trạng thái đơn và thanh toán, Theo dõi đơn hàng và Tiếp tục mua sắm. Không có bước Order Review thứ tư.
+
+Header/Footer dùng lại component hiện có. Font Barlow Condensed/Inter, nền trắng, border/hatch nhẹ và CSS scoped; không có cam kết chính hãng, ETA, cửa hàng vật lý hay thông tin kinh doanh tự tạo. Trang Account có Order History/Detail riêng, bộ lọc trạng thái và hủy đơn hợp lệ. Giá/tên trong lịch sử là snapshot; thumbnail là ảnh hiện được liên kết với sản phẩm, không phải snapshot file ảnh lịch sử.
+
+### Trạng thái thanh toán được triển khai
+
+- **Live hiện tại**: COD hoạt động; chuyển khoản/VietQR chưa khả dụng vì chủ dự án không cung cấp tài khoản thật. Không có BIN/tài khoản giả trong cấu hình Live.
+- **Sandbox trên database test cô lập**: tạo Order/payment `bank_transfer`, `pending`. QR minh họa chứa `MANGA-UNIVERSE-SANDBOX|ORDER=...|AMOUNT=...|REFERENCE=MU<id>|NOT-A-PAYMENT`, không chứa tài khoản/BIN và không phải lệnh VietQR chuyển tiền. Nhãn Sandbox xuất hiện tại checkout, receipt và báo cáo test.
+- **React Demo** (`VITE_USE_PRODUCTS_API=false`): cùng giao diện ba bước, các lựa chọn minh họa, không gọi Order API, không có mã đơn thật/QR thanh toán hoặc thông báo đã nhận tiền. Bước cuối ghi rõ hoàn tất bản minh họa. Giữ nguyên giá/demo currency gốc, không tự chuyển tỷ giá.
+
+Không có nút khách tự xác nhận paid. Cả bank/VietQR dùng cùng một payment `bank_transfer`; không tạo hai khoản phải thu hoặc một phương thức enum giả `vietqr`. Không tích hợp ngân hàng, webhook, cổng thanh toán hoặc hoàn tiền.
+
+### API và schema
+
+MariaDB 10.4.32 đã có `payments.method ENUM('cod','bank_transfer')`, `status ENUM('pending','paid','failed','refunded')`, UNIQUE(order_id), amount_vnd, transaction_ref, paid_at. Orders có UNIQUE(user_id,idempotency_key) và checkout_request_hash. **Không migration/ALTER/seed database chính.**
+
+- `GET orders/quote.php`: thêm `payment_options` và `payment_simulation`; không gửi tài khoản nhận tiền hoặc QR trước khi có đơn.
+- `POST orders/create.php`: chấp nhận `payment_method=cod|bank_transfer`; backend xác minh cấu hình trước khi ghi đơn bank. Giá/stock/user_id/paid từ client không được tin cậy. Trạng thái ban đầu pending; giữ transaction, row locks, snapshots, movements và idempotency của 12C. Payment method tham gia canonical request hash.
+- `GET orders/index.php`, `GET orders/detail.php`: thêm phương thức/trạng thái thanh toán; detail có ảnh và hướng dẫn cho đơn bank còn pending của đúng người dùng. Paid/cancelled không tiếp tục hiển thị QR yêu cầu chuyển tiền.
+- `POST orders/cancel.php`: giữ transaction hoàn kho đúng một lần; hỗ trợ bank pending; không cho hủy đơn đã được xác nhận nhận tiền qua quy trình chưa có hoàn tiền.
+- `POST admin/payment-confirm.php`: vẫn bắt buộc Admin/session/CSRF, `received=true`, receipt reference. Với bank thêm `amount_vnd` đúng tổng và `payment_reference=MU<order_id>`. Khóa advisory theo database + khóa Order/payment trong transaction; cùng biên nhận không được ghi cho đơn khác, gọi lặp không thu hai lần. COD vẫn chỉ xác nhận sau delivered. Chỉ API này được dùng để đối soát, không UPDATE paid trực tiếp.
+
+Buy Now không thêm/xóa/đổi cart hoặc tạo cart_items tạm. Cart Checkout chỉ làm rỗng cart sau commit. Retry giữ key; đổi nội dung/method với key cũ bị conflict. Khi phiên hết hạn, form được giữ tối đa 15 phút trong bộ nhớ theo tài khoản/nguồn; tài khoản khác không được nhận draft. Không lưu địa chỉ, token hay thông tin ngân hàng vào browser storage. Full reload trước khi tạo đơn không lưu draft địa chỉ; Buy Now intent vẫn chỉ chứa ID/quantity/mode.
+
+### Cấu hình PHP và QR
+
+`backend/config/payment.example.php` là mẫu. `payment.local.php` được gitignore, nằm ngoài public; bản Live hiện chỉ có enabled/verified/sandbox=false, không chứa thông tin ngân hàng.
+
+Để trình diễn trên bản backend test cô lập:
+
+```php
+<?php return ['enabled' => true, 'sandbox' => true];
+```
+
+Backend chỉ cho Sandbox với tên database dạng `manga_store_*test_<digits>`. Không dùng cấu hình này trên database chính. Khi có tài khoản thật trong tương lai, chủ dự án phải xác nhận bank_name, bank_bin (6 số), account_number và account_name; giữ sandbox=false, chỉ bật enabled/verified sau kiểm tra độc lập. Không lưu mật khẩu ngân hàng/API secret vào mẫu này. Không đổi tài khoản khi còn đơn bank pending: schema hiện không lưu snapshot tài khoản nhận tiền; cần xử lý đơn chờ trước hoặc đề xuất migration riêng nếu cần lịch sử nhiều tài khoản.
+
+QR encoder cục bộ là mã TypeScript MIT của [Project Nayuki](https://www.nayuki.io/page/qr-code-generator-library), giữ nguyên license ở `frontend/src/vendor/qrcodegen.ts`. QR/SVG không được gửi tới dịch vụ bên thứ ba. Đã chuẩn bị builder TLV/CRC cho cấu hình thật trong `PaymentSettings.php`, dựa trên cấu trúc EMV merchant-presented; xem [EMVCo](https://www.emvco.com/emv-technologies/qr-codes/). **Chưa kích hoạt hoặc chứng nhận tương thích ứng dụng ngân hàng cho VietQR thật**, theo yêu cầu không dùng tài khoản/thanh toán thật. QR đang trình diễn là QR thông thường chứa dữ liệu Sandbox, không được mô tả như VietQR có thể chuyển tiền.
+
+### Admin và Reports
+
+Đối soát bank yêu cầu đúng số tiền, tham chiếu MU<id> và biên nhận giao dịch. Môi trường Sandbox dùng nhãn xác nhận mô phỏng. Không tự động đổi delivered thành paid. Không có doanh thu thật từ thao tác khách quét/copy/download QR.
+
+- COD thực thu giữ nguyên: cod + paid + paid_at + transaction_ref + order delivered, theo kỳ paid_at.
+- Bank đã xác nhận: bank_transfer + paid + paid_at + transaction_ref + order không cancelled, theo kỳ paid_at.
+- Tổng đã xác nhận = COD + bank; một payment mỗi order nên không nhân bản bởi order_items.
+- Thêm KPI `collected_bank_vnd`, `collected_total_vnd` và cột CSV tương ứng; giữ chỉ số/biểu đồ COD cũ đúng nhãn. Các số tiền báo cáo tiếp tục dùng decimal string để tránh mất chính xác.
+
+### File thêm/sửa trong 13
+
+- Backend: `PaymentSettings.php` (mới), `OrderRepository.php`, `orders_bootstrap.php`, `AdminRepository.php`, `admin_bootstrap.php`, `ReportRepository.php`, `reports_bootstrap.php`, `config/payment.example.php` (mới), `.gitignore`.
+- Checkout: `frontend/src/checkout/CheckoutView.tsx`, `checkout.css`, `DemoCheckout.tsx`, `routes.ts`, `resumeDraft.ts` (mới); `components/ApiCheckout.tsx`, `components/OrdersPanel.tsx`, `services/orderService.ts`, `shop/BuyNowCheckout.tsx`, `App.tsx`, `i18n.tsx`.
+- Admin: chỉ phần payment trong `AdminApp.tsx`, `adminService.ts`; thêm KPI trong `AdminReports.tsx`, `reportService.ts`. Không thay sidebar hoặc các trang quản lý khác.
+- QR: `vendor/qrcodegen.ts` (MIT); jsQR chỉ là bộ giải mã kiểm thử riêng ngoài webroot, không thêm dependency production/npm.
+- Tests: `test_payments.py`, `check_checkout_baseline.mjs`, `check_checkout_phase13.mjs`, `check_checkout_edges.mjs`, `check_checkout_demo13.mjs` (mới); `test_reports.py` cập nhật kiểm tra CSV theo tên cột thay vì vị trí cột cuối.
+
+### Kiểm thử và bằng chứng
+
+HTTP/CLI trên database cô lập: `test_orders.py`, `test_buy_now.py`, `test_payments.py`, `test_admin.py`, `test_reports.py`. Đã kiểm tra COD/Buy Now, bank Sandbox pending, không tự paid, ownership/session/CSRF, amount/reference mismatch, receipt trùng, Admin đồng thời, idempotency đổi method, rollback khi payment insert lỗi, hoàn kho một lần, Reports/CSV không đếm trùng và giữ precision.
+
+Chrome: `check_checkout_phase13.mjs` thực chạy các bước Cart hai sản phẩm, Buy Now COD, Buy Now quantity 2 Sandbox, tạo đơn mất response/retry/refresh, lịch sử/snapshot/cancel, copy/download QR, đối soát Admin và Reports. SVG đã được giải mã bằng jsQR độc lập: nội dung không phải lệnh thanh toán. Capture tại 1440/900/390, VI/EN. `check_checkout_edges.mjs` kiểm tra cấu hình bank tắt, không nhảy tới Completed, session expiry/login giữ intent + draft riêng tư, timeout HTTP 15 giây/retry không tạo đơn và reduced-motion. `check_checkout_demo13.mjs` kiểm tra Demo ba bước, không gọi Order API và không tạo mã đơn/QR thật.
+
+Ảnh ở `frontend/.artifacts/13-*`: baseline checkout trước sửa; information/payment/complete COD; Buy Now COD; complete và Order Detail Sandbox; QR mobile; lịch sử; Admin/Reports; Live chưa cấu hình và Demo. Các file JSON ghi rõ kiểm thử thực chạy. Không coi ảnh Sandbox là bằng chứng thanh toán ngân hàng thật hoặc tuyên bố pixel-perfect.
+
+### Sao lưu/khôi phục
+
+Backup trước triển khai ở `C:/xampp/manga-store-backups/2026-11-25-checkout/`: `manga_store.sql`, `before.json`, bản source frontend/backend trước sửa. Không cần restore database để rollback UI/code vì không migration hoặc ghi test lên database chính. Khi cần quay lại source, chỉ phục hồi các file trong phạm vi 13; không revert các thay đổi mới khác. Nếu có nhu cầu restore dữ liệu thật, sao lưu trạng thái hiện tại và xác nhận phạm vi trước khi import dump, tránh ghi đè các đơn phát sinh sau backup.
+
+
+Kết quả bàn giao cuối: build production, TypeScript, PHP lint và `git diff --check` đạt. Đã chạy hồi quy Chrome catalog đủ 23 sản phẩm/37 ảnh, Discovery/Series/Gallery và Flipbook Loader; kiểm tra CTA bằng mouse hover, keyboard Enter/Tab/focus-visible và touch. GUI Demo ba bước đạt, không gọi Order API và không có mã đơn/QR thanh toán thật. `13-tests.json` tổng hợp báo cáo và ma trận screenshot 1440/900/390. `13-preservation.json` xác nhận dữ liệu **và schema cả 17 bảng chính khớp trước/sau**, vẫn 23 active/8 archived/37 ảnh; số đơn chính vẫn 1 trước/sau. Các hàm Header/Home/Footer/CharacterArt/ProductCard/ProductPage/Shop/Series/Cart và source Discovery/About/Loader/global CSS/Auth/Commerce được đối chiếu nguyên vẹn. Không có phép thử ghi vào database chính. Cấu hình Live đã phục hồi `VITE_USE_PRODUCTS_API=true`; bank/VietQR thật vẫn tắt.
+
+
+## Giai đoạn 14 — Vũ trụ của tôi
+
+Account dùng Barlow Condensed/Inter và CSS scoped trong `frontend/src/account/account.css`; Hero outline, sidebar hồ sơ, bốn thống kê, lịch sử dạng hàng/card responsive. Không sửa Header/Footer/Home/Shop hoặc CSS toàn cục.
+
+### Dữ liệu và điều hướng
+- Auth session cung cấp ID, tên, email, role và ngày tạo tài khoản. Avatar lấy initials; hồ sơ chỉ đọc vì chưa có API cập nhật.
+- Tổng đơn: COUNT orders theo session user; đang xử lý: pending + confirmed + processing + shipping; yêu thích: danh sách Wishlist hiện có; đã giao: delivered. Không có hệ thống điểm thành viên nên thẻ thứ tư là Đơn đã giao.
+- `#account`, `#account/orders`, `#account/orders/<id>`, `#account/information`; query `status` và `page` giữ lọc/phân trang khi refresh/Back/Forward. Wishlist và logout tái sử dụng chức năng cũ.
+- Order Detail, snapshot, hướng dẫn Sandbox và hủy đơn dùng OrdersPanel/OrderReceipt hiện có. Trạng thái thanh toán lấy backend; không suy ra paid từ delivered hoặc từ việc xem QR.
+- Demo không gọi Order API, hiển thị chỉ số đơn chưa khả dụng thay vì số liệu giả. Không bổ sung loyalty hoặc chỉnh sửa hồ sơ.
+
+### API đọc bổ sung, tương thích ngược
+`GET /api/orders/index.php?view=account&status=all&page=1&per_page=10`
+
+Session bắt buộc; user_id lấy từ server. `status`: all/pending/confirmed/processing/shipping/delivered/cancelled; `per_page`: 10/20/50. Response data gồm `items`, `counts`, `total_orders`, `total`, `page`, `pages`, `page_size`. Tổng theo trạng thái không bị giới hạn bởi trang hiện tại. Sort created_at DESC, id DESC; clamp trang không hợp lệ sau thay đổi dữ liệu. Truy vấn trong transaction READ ONLY REPEATABLE READ; payments có UNIQUE order_id, không nhân đôi đơn. Không có view thì response array cũ vẫn giữ nguyên. Không migration hoặc API ghi mới.
+
+### Kiểm thử thực tế
+- `test_account_read.py`: 105 đơn tài khoản A, 3 đơn B trên database cô lập; phân trang không trùng/mất, đủ sáu trạng thái, validation422, guest401, sở hữu404, response cũ và đối chiếu 17 bảng trước/sau đọc: PASS.
+- Chrome `check_account_dashboard.mjs`: 1440/900/390, VI/EN, dữ liệu thật từ fixture cô lập, lọc/phân trang/deep link/refresh/Back/Forward, Wishlist, logout/đổi tài khoản, keyboard/hover/touch, hủy một đơn Sandbox tạo qua API và hoàn kho một lần: PASS.
+- `check_account_edges.mjs`: loading không hiển thị 0 giả, lỗi API/retry/session hết hạn: PASS. `check_account_demo.mjs`: không gọi Order API, không overflow ba viewport: PASS.
+- Hồi quy Chrome Checkout Phase13 COD/Buy Now/Bank/VietQR Sandbox, API Admin, API Reports và Chrome catalog Live: PASS. Không chuyển tiền thật.
+- Vite production build, TypeScript noEmit, PHP lint ba file mới/sửa và git diff --check: PASS (Git có cảnh báo line ending thông thường).
+- Bằng chứng nằm trong `frontend/.artifacts/14-*.json` và `14-*.png`. Screenshot sử dụng tài khoản/dữ liệu mô phỏng trong database cô lập, không phải đơn chính. Không tuyên bố pixel-perfect.
+
+### File Giai đoạn 14
+Thêm `frontend/src/account/{AccountDashboard.tsx,account.css,accountService.ts,routes.ts}`, `backend/src/AccountOrderRead.php`; sửa `App.tsx`, `i18n.tsx`, `AccountPanel.tsx`, `OrdersPanel.tsx` và nhánh index đọc trong `orders_bootstrap.php`. Thêm fixture/API/Chrome tests Account; điều chỉnh bốn regression harness để chấp nhận nhãn LOG OUT. Các thay đổi Giai đoạn 13 có sẵn không thuộc phạm vi Giai đoạn 14.
+
+Đối chiếu snapshot riêng `C:/xampp/manga-store-backups/2026-11-26-account/before.json` và `after.json`: toàn bộ schema và SHA256 dữ liệu 17 bảng chính giống nhau; 31 sản phẩm (23 active/8 archived), 37 ảnh, 18 series, 2 đơn được giữ nguyên. Không ghi dữ liệu kiểm thử vào database chính. Kết quả không chứa thông tin riêng tư: `frontend/.artifacts/14-preservation.json`.
+
+Khôi phục giao diện nếu cần: dùng bản sao source trước Giai đoạn 14 tại thư mục backup trên để phục hồi riêng năm file đã sửa và loại bỏ các file Account mới; không phục hồi toàn bộ commit hay database vì sẽ ảnh hưởng công việc khác. Không cần rollback schema/dữ liệu.

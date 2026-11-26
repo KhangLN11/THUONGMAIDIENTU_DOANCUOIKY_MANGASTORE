@@ -1,0 +1,444 @@
+{
+  "CAT-MG-AOT-EN-01": {
+    "slug": "attack-on-titan-vol-1-kodansha-en",
+    "name_vi": "Đại Chiến Titan – Tập 1 (bản tiếng Anh)",
+    "name_en": "Attack on Titan, Vol. 1 (English Edition)",
+    "description_vi": "Tập 1 của manga Attack on Titan do Hajime Isayama sáng tác, bản in tiếng Anh Kodansha. Câu chuyện theo chân những người trẻ phải chiến đấu để sinh tồn trước Titan và khám phá bí mật của thế giới sau các bức tường. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1 of Hajime Isayama’s Attack on Titan, Kodansha English print edition. Young survivors confront the Titans while questioning the history and protections of their walled world. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "attack-on-titan",
+    "facts": {
+      "author": "Hajime Isayama",
+      "publisher": "Kodansha USA Publishing",
+      "language": "en",
+      "volume": 1,
+      "edition": "English print single volume",
+      "isbn_print": "9781612620244",
+      "vietnamese_edition_note": "Vietnamese early-volume source/image not sufficiently verified; English publisher edition selected."
+    }
+  },
+  "CAT-MG-AOT-EN-02": {
+    "slug": "attack-on-titan-vol-2-kodansha-en",
+    "name_vi": "Đại Chiến Titan – Tập 2 (bản tiếng Anh)",
+    "name_en": "Attack on Titan, Vol. 2 (English Edition)",
+    "description_vi": "Tập 2 của manga Attack on Titan do Hajime Isayama sáng tác, bản in tiếng Anh Kodansha. Câu chuyện theo chân những người trẻ phải chiến đấu để sinh tồn trước Titan và khám phá bí mật của thế giới sau các bức tường. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2 of Hajime Isayama’s Attack on Titan, Kodansha English print edition. Young survivors confront the Titans while questioning the history and protections of their walled world. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "attack-on-titan",
+    "facts": {
+      "author": "Hajime Isayama",
+      "publisher": "Kodansha USA Publishing",
+      "language": "en",
+      "volume": 2,
+      "edition": "English print single volume",
+      "isbn_print": "9781612620251",
+      "vietnamese_edition_note": "Vietnamese early-volume source/image not sufficiently verified; English publisher edition selected."
+    }
+  },
+  "CAT-MG-OP-VI-01": {
+    "slug": "one-piece-tap-1-kim-dong-vi",
+    "name_vi": "One Piece – Tập 1 (tiếng Việt)",
+    "name_en": "One Piece, Vol. 1 (Vietnamese Edition)",
+    "description_vi": "Tập 1, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Eiichiro Oda. Luffy bắt đầu hành trình tìm kho báu One Piece và gặp những người bạn đồng hành trên biển. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1, Vietnamese edition published by Kim Dong. Creator: Eiichiro Oda. Luffy pursues the One Piece treasure and meets companions along his seafaring journey. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "one-piece",
+    "facts": {
+      "author": "Eiichiro Oda",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 1,
+      "edition_variant": "Tập 01 (2026)",
+      "source_variant_id": 198564831,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-OP-VI-02": {
+    "slug": "one-piece-tap-2-kim-dong-vi",
+    "name_vi": "One Piece – Tập 2 (tiếng Việt)",
+    "name_en": "One Piece, Vol. 2 (Vietnamese Edition)",
+    "description_vi": "Tập 2, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Eiichiro Oda. Luffy bắt đầu hành trình tìm kho báu One Piece và gặp những người bạn đồng hành trên biển. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2, Vietnamese edition published by Kim Dong. Creator: Eiichiro Oda. Luffy pursues the One Piece treasure and meets companions along his seafaring journey. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "one-piece",
+    "facts": {
+      "author": "Eiichiro Oda",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 2,
+      "edition_variant": "Tập 02 (2026)",
+      "source_variant_id": 215295731,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-DOR-VI-01": {
+    "slug": "doraemon-tap-1-kim-dong-vi",
+    "name_vi": "Doraemon truyện ngắn – Tập 1 (tiếng Việt)",
+    "name_en": "Doraemon Short Stories, Vol. 1 (Vietnamese Edition)",
+    "description_vi": "Tập 1, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Fujiko F. Fujio. Doraemon và Nobita khám phá những tình huống đời thường qua các bảo bối tương lai. Những mẩu chuyện kết hợp sự hài hước với tình bạn và trí tưởng tượng. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1, Vietnamese edition published by Kim Dong. Creator: Fujiko F. Fujio. Doraemon and Nobita turn everyday problems into imaginative adventures with futuristic gadgets, friendship and gentle humor. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "doraemon",
+    "facts": {
+      "author": "Fujiko F. Fujio",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 1,
+      "edition_variant": "Tập 01 (2026)",
+      "source_variant_id": 192019867,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-DOR-VI-02": {
+    "slug": "doraemon-tap-2-kim-dong-vi",
+    "name_vi": "Doraemon truyện ngắn – Tập 2 (tiếng Việt)",
+    "name_en": "Doraemon Short Stories, Vol. 2 (Vietnamese Edition)",
+    "description_vi": "Tập 2, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Fujiko F. Fujio. Doraemon và Nobita khám phá những tình huống đời thường qua các bảo bối tương lai. Những mẩu chuyện kết hợp sự hài hước với tình bạn và trí tưởng tượng. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2, Vietnamese edition published by Kim Dong. Creator: Fujiko F. Fujio. Doraemon and Nobita turn everyday problems into imaginative adventures with futuristic gadgets, friendship and gentle humor. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "doraemon",
+    "facts": {
+      "author": "Fujiko F. Fujio",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 2,
+      "edition_variant": "Tập 02 (2026)",
+      "source_variant_id": 204799528,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-NAR-VI-01": {
+    "slug": "naruto-tap-1-kim-dong-vi",
+    "name_vi": "Naruto – Tập 1 (tiếng Việt)",
+    "name_en": "Naruto, Vol. 1 (Vietnamese Edition)",
+    "description_vi": "Tập 1, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Masashi Kishimoto. Naruto theo đuổi ước mơ trở thành Hokage và được làng Lá công nhận. Hành trình ninja mở ra những thử thách về tinh thần đồng đội và sự trưởng thành. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1, Vietnamese edition published by Kim Dong. Creator: Masashi Kishimoto. Naruto pursues recognition and his ambition to become Hokage. His ninja journey brings challenges of teamwork, responsibility and personal growth. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "naruto",
+    "facts": {
+      "author": "Masashi Kishimoto",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 1,
+      "edition_variant": "Tập 01 (2026)",
+      "source_variant_id": 213658673,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-NAR-VI-02": {
+    "slug": "naruto-tap-2-kim-dong-vi",
+    "name_vi": "Naruto – Tập 2 (tiếng Việt)",
+    "name_en": "Naruto, Vol. 2 (Vietnamese Edition)",
+    "description_vi": "Tập 2, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Masashi Kishimoto. Naruto theo đuổi ước mơ trở thành Hokage và được làng Lá công nhận. Hành trình ninja mở ra những thử thách về tinh thần đồng đội và sự trưởng thành. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2, Vietnamese edition published by Kim Dong. Creator: Masashi Kishimoto. Naruto pursues recognition and his ambition to become Hokage. His ninja journey brings challenges of teamwork, responsibility and personal growth. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "naruto",
+    "facts": {
+      "author": "Masashi Kishimoto",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 2,
+      "edition_variant": "Tập 02 (2026)",
+      "source_variant_id": 202327305,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-DB-VI-01": {
+    "slug": "dragon-ball-tap-1-kim-dong-vi",
+    "name_vi": "Dragon Ball – Bảy Viên Ngọc Rồng – Tập 1 (tiếng Việt)",
+    "name_en": "Dragon Ball, Vol. 1 (Vietnamese Edition)",
+    "description_vi": "Tập 1, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Akira Toriyama. Goku và Bulma bước vào chuyến phiêu lưu tìm những viên ngọc rồng. Tình bạn, những cuộc chạm trán bất ngờ và tinh thần khám phá tạo nên không khí vui nhộn của bộ truyện. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1, Vietnamese edition published by Kim Dong. Creator: Akira Toriyama. Goku and Bulma set out in search of the Dragon Balls. New friendships and unexpected encounters shape this playful adventure. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "dragon-ball",
+    "facts": {
+      "author": "Akira Toriyama",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 1,
+      "edition_variant": "Tập 01 (2026)",
+      "source_variant_id": 198564278,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-DB-VI-02": {
+    "slug": "dragon-ball-tap-2-kim-dong-vi",
+    "name_vi": "Dragon Ball – Bảy Viên Ngọc Rồng – Tập 2 (tiếng Việt)",
+    "name_en": "Dragon Ball, Vol. 2 (Vietnamese Edition)",
+    "description_vi": "Tập 2, ấn bản tiếng Việt của NXB Kim Đồng. Tác giả: Akira Toriyama. Goku và Bulma bước vào chuyến phiêu lưu tìm những viên ngọc rồng. Tình bạn, những cuộc chạm trán bất ngờ và tinh thần khám phá tạo nên không khí vui nhộn của bộ truyện. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2, Vietnamese edition published by Kim Dong. Creator: Akira Toriyama. Goku and Bulma set out in search of the Dragon Balls. New friendships and unexpected encounters shape this playful adventure. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "dragon-ball",
+    "facts": {
+      "author": "Akira Toriyama",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 2,
+      "edition_variant": "Tập 02 (2025)",
+      "source_variant_id": 179139874,
+      "isbn_print": null,
+      "isbn_note": "Publisher sales barcode is not assumed to be an ISBN."
+    }
+  },
+  "CAT-MG-BC-VI-01": {
+    "slug": "black-clover-tap-1-kim-dong-vi",
+    "name_vi": "Black Clover – Tập 1 (tiếng Việt)",
+    "name_en": "Black Clover, Vol. 1 (Vietnamese Edition)",
+    "description_vi": "Tập 1 của Black Clover do Yūki Tabata sáng tác, bản tiếng Việt NXB Kim Đồng. Asta không có phép thuật nhưng quyết theo đuổi con đường ma pháp kỵ sĩ bằng ý chí và năng lực khác biệt. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1 of Yūki Tabata’s Black Clover in the Kim Dong Vietnamese edition. Asta challenges a world built around magic with determination and an unusual power of his own. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "black-clover",
+    "facts": {
+      "author": "Yūki Tabata",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 1,
+      "isbn_print": null,
+      "edition": "Vietnamese single-volume paperback",
+      "bonus_note": "Retailer mentions a promotional postcard; no bonus availability is promised by this demo catalog."
+    }
+  },
+  "CAT-MG-BC-VI-02": {
+    "slug": "black-clover-tap-2-kim-dong-vi",
+    "name_vi": "Black Clover – Tập 2 (tiếng Việt)",
+    "name_en": "Black Clover, Vol. 2 (Vietnamese Edition)",
+    "description_vi": "Tập 2 của Black Clover do Yūki Tabata sáng tác, bản tiếng Việt NXB Kim Đồng. Asta không có phép thuật nhưng quyết theo đuổi con đường ma pháp kỵ sĩ bằng ý chí và năng lực khác biệt. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2 of Yūki Tabata’s Black Clover in the Kim Dong Vietnamese edition. Asta challenges a world built around magic with determination and an unusual power of his own. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "black-clover",
+    "facts": {
+      "author": "Yūki Tabata",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 2,
+      "isbn_print": null,
+      "edition": "Vietnamese single-volume paperback",
+      "bonus_note": "Retailer mentions a promotional postcard; no bonus availability is promised by this demo catalog."
+    }
+  },
+  "CAT-MG-KAG-VI-01": {
+    "slug": "kaguya-sama-tap-1-kim-dong-vi",
+    "name_vi": "Kaguya-sama: Cuộc Chiến Tỏ Tình – Tập 1 (VI)",
+    "name_en": "Kaguya-sama: Love Is War, Vol. 1 (Vietnamese Edition)",
+    "description_vi": "Tập 1 của manga tình cảm hài do Aka Akasaka sáng tác, bản tiếng Việt NXB Kim Đồng. Kaguya và Miyuki biến chuyện thổ lộ tình cảm thành những màn đấu trí đầy tự ái và hiểu lầm. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 1 of Aka Akasaka’s romantic comedy, in the Kim Dong Vietnamese edition. Kaguya and Miyuki turn their mutual feelings into elaborate contests of pride and strategy. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "kaguya-sama-love-is-war",
+    "facts": {
+      "author": "Aka Akasaka",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 1,
+      "isbn_print": null,
+      "edition": "Vietnamese single-volume paperback",
+      "image_note": null
+    }
+  },
+  "CAT-MG-KAG-VI-02": {
+    "slug": "kaguya-sama-tap-2-kim-dong-vi",
+    "name_vi": "Kaguya-sama: Cuộc Chiến Tỏ Tình – Tập 2 (VI)",
+    "name_en": "Kaguya-sama: Love Is War, Vol. 2 (Vietnamese Edition)",
+    "description_vi": "Tập 2 của manga tình cảm hài do Aka Akasaka sáng tác, bản tiếng Việt NXB Kim Đồng. Kaguya và Miyuki biến chuyện thổ lộ tình cảm thành những màn đấu trí đầy tự ái và hiểu lầm. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Volume 2 of Aka Akasaka’s romantic comedy, in the Kim Dong Vietnamese edition. Kaguya and Miyuki turn their mutual feelings into elaborate contests of pride and strategy. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "manga",
+    "series_slug": "kaguya-sama-love-is-war",
+    "facts": {
+      "author": "Aka Akasaka",
+      "publisher": "NXB Kim Đồng",
+      "language": "vi",
+      "volume": 2,
+      "isbn_print": null,
+      "edition": "Vietnamese single-volume paperback",
+      "image_note": "Volume 2 source depicts book with promotional coaster; no separate coaster SKU or bonus stock is claimed."
+    }
+  },
+  "CAT-NV-YN-VI": {
+    "slug": "your-name-novel-ipm-vi",
+    "name_vi": "Your Name. – Tiểu thuyết (tiếng Việt)",
+    "name_en": "Your Name. – Novel (Vietnamese Edition)",
+    "description_vi": "Tiểu thuyết do Makoto Shinkai viết, không phải manga hoặc sách tranh phim. Mitsuha và Taki bất ngờ trải nghiệm cuộc sống của nhau qua những lần hoán đổi thân xác. Cuộc gặp gỡ vượt khoảng cách dẫn họ đến một mối liên hệ sâu sắc với ký ức và thời gian. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "A novel written by Makoto Shinkai, not the manga adaptation or a film visual guide. Mitsuha and Taki begin experiencing each other’s lives through unexpected body swaps. Their connection draws them into a story of memory, distance and time. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "novels",
+    "series_slug": "your-name",
+    "facts": {
+      "author": "Makoto Shinkai / Shinkai Makoto",
+      "publisher": "NXB Hồng Đức",
+      "distributor": "IPM",
+      "language": "vi",
+      "format": "Novel",
+      "listed_publication_year": "2017",
+      "binding": "paperback",
+      "isbn_print": null,
+      "unresolved": []
+    }
+  },
+  "CAT-NV-WWY-VI": {
+    "slug": "weathering-with-you-novel-ipm-vi",
+    "name_vi": "Đứa Con Của Thời Tiết – Tiểu thuyết (tiếng Việt)",
+    "name_en": "Weathering with You – Novel (Vietnamese Edition)",
+    "description_vi": "Tiểu thuyết do Makoto Shinkai viết, không phải manga hoặc sách tranh phim. Hodaka đến Tokyo trong những ngày mưa kéo dài và gặp Hina, cô gái có năng lực đặc biệt với bầu trời. Hai người phải đối diện với sự đánh đổi giữa hạnh phúc riêng và những điều lớn hơn bản thân. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "A novel written by Makoto Shinkai, not the manga adaptation or a film visual guide. Hodaka reaches a rain-soaked Tokyo and meets Hina, a girl with a remarkable connection to the sky. Their growing bond raises questions about personal happiness and its wider consequences. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "novels",
+    "series_slug": "weathering-with-you",
+    "facts": {
+      "author": "Makoto Shinkai / Shinkai Makoto",
+      "publisher": "NXB Hà Nội",
+      "distributor": "IPM",
+      "language": "vi",
+      "format": "Novel",
+      "listed_publication_year": "2021",
+      "binding": "paperback",
+      "isbn_print": null,
+      "unresolved": []
+    }
+  },
+  "CAT-NV-SUZ-VI": {
+    "slug": "suzume-novel-ipm-vi",
+    "name_vi": "Khóa Chặt Cửa Nào Suzume – Tiểu thuyết (tiếng Việt)",
+    "name_en": "Suzume – Novel (Vietnamese Edition)",
+    "description_vi": "Tiểu thuyết do Makoto Shinkai viết, không phải manga hoặc sách tranh phim. Suzume theo chân một người thanh niên đi đóng những cánh cửa gắn với hiểm họa trên khắp Nhật Bản. Chuyến đi đưa cô trở lại với mất mát, ký ức tuổi thơ và lòng can đảm để tiếp tục sống. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "A novel written by Makoto Shinkai, not the manga adaptation or a film visual guide. Suzume follows a young traveler closing dangerous doors across Japan. Her journey connects an outward adventure with childhood memories, loss and the courage to move forward. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "novels",
+    "series_slug": "suzume",
+    "facts": {
+      "author": "Makoto Shinkai / Shinkai Makoto",
+      "publisher": "NXB Hồng Đức",
+      "distributor": "IPM",
+      "language": "vi",
+      "format": "Novel",
+      "listed_publication_year": null,
+      "binding": null,
+      "isbn_print": null,
+      "unresolved": [
+        "Suzume page handle and cover label say softcover, while the specification table says hardcover; binding/reprint year deliberately not asserted."
+      ]
+    }
+  },
+  "CAT-FG-FRI-PUP": {
+    "slug": "frieren-pop-up-parade",
+    "name_vi": "Frieren – POP UP PARADE",
+    "name_en": "Frieren – POP UP PARADE",
+    "description_vi": "Mẫu POP UP PARADE của Frieren trong Frieren: Beyond Journey’s End, do Good Smile Company sản xuất. Figure không theo tỉ lệ, cao khoảng 160 mm; phù hợp trưng bày cùng bộ sưu tập anime. Ảnh quảng bá chính thức có thể là mẫu thử và khác đôi chút so với sản phẩm bán lẻ. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Frieren from Frieren: Beyond Journey’s End, in the specific POP UP PARADE release manufactured by Good Smile Company. This non-scale figure stands approximately 160 mm tall. Official promotional photographs may show prototypes and can differ from retail production. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "figures",
+    "series_slug": "frieren-beyond-journeys-end",
+    "facts": {
+      "character": "Frieren",
+      "anime": "Frieren: Beyond Journey’s End",
+      "model": "POP UP PARADE Frieren",
+      "manufacturer": "Good Smile Company",
+      "distributor": "Good Smile Company",
+      "product_line": "POP UP PARADE",
+      "height_mm_approx": 160,
+      "scale": "non-scale",
+      "photo_note": "Manufacturer promotional prototype photography; not AI images or a guarantee of final retail appearance."
+    }
+  },
+  "CAT-FG-MAR-PUP": {
+    "slug": "marin-kitagawa-pop-up-parade",
+    "name_vi": "Marin Kitagawa – POP UP PARADE",
+    "name_en": "Marin Kitagawa – POP UP PARADE",
+    "description_vi": "Mẫu POP UP PARADE của Marin Kitagawa trong My Dress-Up Darling, do Good Smile Arts Shanghai sản xuất. Figure không theo tỉ lệ, cao khoảng 185 mm; phù hợp trưng bày cùng bộ sưu tập anime. Ảnh quảng bá chính thức có thể là mẫu thử và khác đôi chút so với sản phẩm bán lẻ. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Marin Kitagawa from My Dress-Up Darling, in the specific POP UP PARADE release manufactured by Good Smile Arts Shanghai. This non-scale figure stands approximately 185 mm tall. Official promotional photographs may show prototypes and can differ from retail production. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "figures",
+    "series_slug": "my-dress-up-darling",
+    "facts": {
+      "character": "Marin Kitagawa",
+      "anime": "My Dress-Up Darling",
+      "model": "POP UP PARADE Marin Kitagawa",
+      "manufacturer": "Good Smile Arts Shanghai",
+      "distributor": "Good Smile Company",
+      "product_line": "POP UP PARADE",
+      "height_mm_approx": 185,
+      "scale": "non-scale",
+      "photo_note": "Manufacturer promotional prototype photography; not AI images or a guarantee of final retail appearance."
+    }
+  },
+  "CAT-FG-MAO-NEN": {
+    "slug": "maomao-nendoroid-2288",
+    "name_vi": "Maomao – Nendoroid 2288",
+    "name_en": "Maomao – Nendoroid 2288",
+    "description_vi": "Mẫu Nendoroid 2288 của Maomao trong The Apothecary Diaries, do Good Smile Company sản xuất. Figure không theo tỉ lệ, cao khoảng 100 mm; phù hợp trưng bày cùng bộ sưu tập anime. Ảnh quảng bá chính thức có thể là mẫu thử và khác đôi chút so với sản phẩm bán lẻ. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Maomao from The Apothecary Diaries, in the specific Nendoroid 2288 release manufactured by Good Smile Company. This non-scale figure stands approximately 100 mm tall. Official promotional photographs may show prototypes and can differ from retail production. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "figures",
+    "series_slug": "the-apothecary-diaries",
+    "facts": {
+      "character": "Maomao",
+      "anime": "The Apothecary Diaries",
+      "model": "Nendoroid 2288 Maomao",
+      "manufacturer": "Good Smile Company",
+      "distributor": "Good Smile Company",
+      "product_line": "Nendoroid",
+      "height_mm_approx": 100,
+      "scale": "non-scale",
+      "photo_note": "Manufacturer promotional prototype photography; not AI images or a guarantee of final retail appearance."
+    }
+  },
+  "CAT-FG-YOR-PUP": {
+    "slug": "yor-forger-pop-up-parade",
+    "name_vi": "Yor Forger – POP UP PARADE",
+    "name_en": "Yor Forger – POP UP PARADE",
+    "description_vi": "Mẫu POP UP PARADE của Yor Forger trong SPY × FAMILY, do Good Smile Company sản xuất. Figure không theo tỉ lệ, cao khoảng 170 mm; phù hợp trưng bày cùng bộ sưu tập anime. Ảnh quảng bá chính thức có thể là mẫu thử và khác đôi chút so với sản phẩm bán lẻ. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Yor Forger from SPY × FAMILY, in the specific POP UP PARADE release manufactured by Good Smile Company. This non-scale figure stands approximately 170 mm tall. Official promotional photographs may show prototypes and can differ from retail production. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "figures",
+    "series_slug": "spy-family",
+    "facts": {
+      "character": "Yor Forger",
+      "anime": "SPY × FAMILY",
+      "model": "POP UP PARADE Yor Forger",
+      "manufacturer": "Good Smile Company",
+      "distributor": "Good Smile Company",
+      "product_line": "POP UP PARADE",
+      "height_mm_approx": 170,
+      "scale": "non-scale",
+      "photo_note": "Manufacturer promotional prototype photography; not AI images or a guarantee of final retail appearance."
+    }
+  },
+  "CAT-FG-FER-PUP": {
+    "slug": "fern-pop-up-parade",
+    "name_vi": "Fern – POP UP PARADE",
+    "name_en": "Fern – POP UP PARADE",
+    "description_vi": "Mẫu POP UP PARADE của Fern trong Frieren: Beyond Journey’s End, do Good Smile Company sản xuất. Figure không theo tỉ lệ, cao khoảng 170 mm; phù hợp trưng bày cùng bộ sưu tập anime. Ảnh quảng bá chính thức có thể là mẫu thử và khác đôi chút so với sản phẩm bán lẻ. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Fern from Frieren: Beyond Journey’s End, in the specific POP UP PARADE release manufactured by Good Smile Company. This non-scale figure stands approximately 170 mm tall. Official promotional photographs may show prototypes and can differ from retail production. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "figures",
+    "series_slug": "frieren-beyond-journeys-end",
+    "facts": {
+      "character": "Fern",
+      "anime": "Frieren: Beyond Journey’s End",
+      "model": "POP UP PARADE Fern",
+      "manufacturer": "Good Smile Company",
+      "distributor": "Good Smile Company",
+      "product_line": "POP UP PARADE",
+      "height_mm_approx": 170,
+      "scale": "non-scale",
+      "photo_note": "Manufacturer promotional prototype photography; not AI images or a guarantee of final retail appearance."
+    }
+  },
+  "CAT-FG-HIT-PUP": {
+    "slug": "hitori-gotoh-pop-up-parade",
+    "name_vi": "Hitori Gotoh – POP UP PARADE",
+    "name_en": "Hitori Gotoh – POP UP PARADE",
+    "description_vi": "Mẫu POP UP PARADE của Hitori Gotoh trong Bocchi the Rock!, do Good Smile Company sản xuất. Figure không theo tỉ lệ, cao khoảng 195 mm; phù hợp trưng bày cùng bộ sưu tập anime. Ảnh quảng bá chính thức có thể là mẫu thử và khác đôi chút so với sản phẩm bán lẻ. Giá và tồn kho minh họa cho đồ án, không phải báo giá chính thức.",
+    "description_en": "Hitori Gotoh from Bocchi the Rock!, in the specific POP UP PARADE release manufactured by Good Smile Company. This non-scale figure stands approximately 195 mm tall. Official promotional photographs may show prototypes and can differ from retail production. Price and stock are simulated for a course project, not an official offer.",
+    "category_slug": "figures",
+    "series_slug": "bocchi-the-rock",
+    "facts": {
+      "character": "Hitori Gotoh",
+      "anime": "Bocchi the Rock!",
+      "model": "POP UP PARADE Hitori Gotoh",
+      "manufacturer": "Good Smile Company",
+      "distributor": "Good Smile Company",
+      "product_line": "POP UP PARADE",
+      "height_mm_approx": 195,
+      "scale": "non-scale",
+      "photo_note": "Manufacturer promotional prototype photography; not AI images or a guarantee of final retail appearance."
+    }
+  }
+}

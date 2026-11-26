@@ -43,15 +43,26 @@ final class AdminRepository{
   }catch(Throwable $e){if($this->pdo->inTransaction())$this->pdo->rollBack();throw $e;}
  }
  public function collect(array $d):array{
-  $this->pdo->beginTransaction();try{
-   $s=$this->pdo->prepare('SELECT status FROM orders WHERE id=? FOR UPDATE');$s->execute([$d['order_id']]);if($s->fetchColumn()!=='delivered')throw new AdminException('PAYMENT_NOT_ALLOWED',409);
-   $s=$this->pdo->prepare('SELECT method,status,transaction_ref FROM payments WHERE order_id=? FOR UPDATE');$s->execute([$d['order_id']]);$p=$s->fetch();$ref='manual:'.$this->actor.':'.$d['reference'];
-   if(!$p||$p['method']!=='cod')throw new AdminException('PAYMENT_NOT_ALLOWED',409);
+  // Serialize manual receipt reconciliation across admins and orders; no duplicate bank reference.
+  $lock='manga-bank-'.substr(hash('sha256',(string)$this->pdo->query('SELECT DATABASE()')->fetchColumn()),0,40);
+  $q=$this->pdo->prepare('SELECT GET_LOCK(?,5)');$q->execute([$lock]);if((int)$q->fetchColumn()!==1)throw new AdminException('PAYMENT_BUSY',409);
+  try{
+   $this->pdo->beginTransaction();
+   $s=$this->pdo->prepare('SELECT status,total_vnd FROM orders WHERE id=? FOR UPDATE');$s->execute([$d['order_id']]);$order=$s->fetch();if(!$order||$order['status']==='cancelled')throw new AdminException('PAYMENT_NOT_ALLOWED',409);
+   $s=$this->pdo->prepare('SELECT method,status,transaction_ref,amount_vnd FROM payments WHERE order_id=? FOR UPDATE');$s->execute([$d['order_id']]);$p=$s->fetch();
+   if(!$p||!in_array($p['method'],['cod','bank_transfer'],true))throw new AdminException('PAYMENT_NOT_ALLOWED',409);
+   $bank=$p['method']==='bank_transfer';
+   if(!$bank&&$order['status']!=='delivered')throw new AdminException('PAYMENT_NOT_ALLOWED',409);
+   if($bank&&(($d['amount_vnd']??null)!==(int)$p['amount_vnd']||(int)$p['amount_vnd']!==(int)$order['total_vnd']||($d['payment_reference']??null)!==PaymentSettings::reference($d['order_id'])))throw new AdminException('PAYMENT_MISMATCH',409);
+   $receipt=$bank?strtoupper(trim($d['reference'])):$d['reference'];
+   $ref=$bank?'bank:'.$receipt:'manual:'.$this->actor.':'.$receipt;
    if($p['status']==='paid'){if($p['transaction_ref']!==$ref)throw new AdminException('STALE_DATA',409);$this->pdo->commit();return $this->order($d['order_id']);}
    if($p['status']!=='pending')throw new AdminException('PAYMENT_NOT_ALLOWED',409);
+   if($bank){$s=$this->pdo->prepare("SELECT id FROM payments WHERE method='bank_transfer' AND transaction_ref=? AND order_id<>? LIMIT 1");$s->execute([$ref,$d['order_id']]);if($s->fetchColumn()!==false)throw new AdminException('DUPLICATE_RECEIPT',409);}
    $s=$this->pdo->prepare("UPDATE payments SET status='paid',paid_at=CURRENT_TIMESTAMP,transaction_ref=? WHERE order_id=? AND status='pending'");$s->execute([$ref,$d['order_id']]);
    $this->pdo->commit();return $this->order($d['order_id']);
   }catch(Throwable $e){if($this->pdo->inTransaction())$this->pdo->rollBack();throw $e;}
+  finally{$s=$this->pdo->prepare('SELECT RELEASE_LOCK(?)');$s->execute([$lock]);}
  }
  public static function product(array $p):array{
   foreach(['id','category_id','stock_quantity','price_vnd','is_featured'] as $k)$p[$k]=(int)$p[$k];foreach(['series_id','sale_price_vnd'] as $k)$p[$k]=$p[$k]===null?null:(int)$p[$k];

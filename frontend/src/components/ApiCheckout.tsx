@@ -1,8 +1,10 @@
+import { rememberCheckoutDraft, takeCheckoutDraft } from "../checkout/resumeDraft";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../i18n";
 import {
   getQuote,
+  getOrder,
   createOrder,
   recoverOrder,
   type Quote,
@@ -11,7 +13,17 @@ import {
   type CheckoutSource,
 } from "../services/orderService";
 import { AuthError } from "../services/authService";
-import { ProductImage } from "./ProductImage";
+import {
+  CheckoutFrame,
+  ShippingForm,
+  PaymentChoices,
+  OrderSummary,
+  OrderReceipt,
+  emptyShipping,
+  shippingErrors,
+  type ShippingFields,
+} from "../checkout/CheckoutView";
+import { showCompletion } from "../checkout/routes";
 import { PRODUCT_PLACEHOLDER } from "../adapters/productAdapter";
 import type { Product } from "../types/product";
 export function ApiCheckout({
@@ -22,7 +34,9 @@ export function ApiCheckout({
   onOrders,
   onPlaced,
   source,
+  completedOrderId,
 }: {
+  completedOrderId?: number | null;
   source?: CheckoutSource;
   cart: Product[];
   pending: boolean;
@@ -40,14 +54,14 @@ export function ApiCheckout({
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [fields, setFields] = useState({
-    recipient_name: "",
-    recipient_phone: "",
-    province: "",
-    ward: "",
-    address_line: "",
-    customer_note: "",
-  });
+  const [fields, setFields] = useState<ShippingFields>(emptyShipping);
+  const [step, setStep] = useState(1);
+  const [choice, setChoice] = useState<"cod" | "bank_transfer" | "vietqr">("cod");
+  const [errors, setErrors] = useState<Partial<Record<keyof ShippingFields, string>>>({});
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    stepHeading.current?.focus();
+  }, [step]);
   const request = useRef<CheckoutInput | null>(null),
     inFlight = useRef(false),
     alive = useRef(true);
@@ -63,24 +77,31 @@ export function ApiCheckout({
     };
   }, []);
   useEffect(() => {
-    if (authLoading || pending || order) return;
+    if (authLoading || (!completedOrderId && pending) || order) return;
     if (!user) {
+      if (completedOrderId)
+        sessionStorage.setItem("manga-checkout-return", "#checkout/complete/" + completedOrderId);
       onAccount();
       return;
     }
+    const restored = takeCheckoutDraft(user.id, storageKey);
+    if (restored) setFields(restored);
     let active = true;
     setLoading(true);
     setError(null);
     void (async () => {
+      if (completedOrderId) {
+        const existing = await getOrder(completedOrderId);
+        if (active) setOrder(existing);
+        return;
+      }
       const saved = sessionStorage.getItem(storageKey);
       if (saved) {
         if (!/^[a-f0-9]{32}$/.test(saved)) throw new AuthError("CHECKOUT_STORAGE");
         try {
           const existing = await recoverOrder(saved);
           if (active) {
-            setOrder(existing);
-            sessionStorage.removeItem(storageKey);
-            await onPlaced();
+            await finish(existing);
           }
           return;
         } catch (e) {
@@ -99,25 +120,34 @@ export function ApiCheckout({
     return () => {
       active = false;
     };
-  }, [owner, authLoading, pending, attempt, order]);
+  }, [owner, authLoading, pending, attempt, order, completedOrderId]);
   async function finish(result: Order) {
     if (!alive.current) return;
     setOrder(result);
     request.current = null;
     sessionStorage.removeItem(storageKey);
     await onPlaced();
+    if (alive.current) showCompletion(result.id);
   }
   async function submit(event?: FormEvent) {
     event?.preventDefault();
     if (inFlight.current || !user || !quote || order) return;
     setError(null);
     const normalized = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v.trim()]));
-    if (
-      !request.current &&
-      (!/^\+?[0-9]{8,15}$/.test(normalized.recipient_phone) ||
-        Object.entries(normalized).some(([k, v]) => k !== "customer_note" && !v))
-    ) {
-      setError("INVALID_ADDRESS");
+    if (!request.current) {
+      const invalid = shippingErrors(fields);
+      setErrors(invalid);
+      if (Object.keys(invalid).length) {
+        setStep(1);
+        setTimeout(
+          () => document.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus(),
+          0,
+        );
+        return;
+      }
+    }
+    if (step === 1) {
+      setStep(2);
       return;
     }
     inFlight.current = true;
@@ -139,11 +169,11 @@ export function ApiCheckout({
           recipient_name: normalized.recipient_name,
           recipient_phone: normalized.recipient_phone,
           province: normalized.province,
-          district: null,
+          district: normalized.district || null,
           ward: normalized.ward,
           address_line: normalized.address_line,
           customer_note: normalized.customer_note || null,
-          payment_method: "cod",
+          payment_method: choice === "cod" ? "cod" : "bank_transfer",
         };
       }
       const result = await createOrder(request.current);
@@ -173,137 +203,159 @@ export function ApiCheckout({
       if (alive.current) setBusy(false);
     }
   }
-  const update = (name: keyof typeof fields, value: string) =>
+  const update = (name: keyof typeof fields, value: string) => {
     setFields((f) => ({ ...f, [name]: value }));
+    setErrors((e) => ({ ...e, [name]: undefined }));
+  };
+  const items = order
+    ? order.items.map((i) => ({
+        id: i.product_id,
+        name: language === "vi" ? i.name_vi_snapshot : i.name_en_snapshot,
+        quantity: i.quantity,
+        unit: i.unit_price_vnd,
+        total: i.line_total_vnd,
+        image: i.image_url,
+      }))
+    : (quote?.items.map((i) => ({
+        id: i.product_id,
+        name: language === "vi" ? i.name_vi : i.name_en,
+        quantity: i.quantity,
+        unit: i.unit_price_vnd,
+        total: i.line_total_vnd,
+        image: cart.find((p) => p.id === i.product_id)?.image,
+      })) ?? []);
   return (
-    <main
-      className="checkout"
-      data-product-text
-      data-checkout-api
-      data-checkout-source={source ? "buy_now" : "cart"}
-    >
-      <section>
-        <button className="brand checkout-brand" onClick={onHome}>
-          <span>MU</span>MANGA UNIVERSE
-        </button>
-        <p className="steps">
-          {t(source ? "BUY NOW" : "CART")} — <b>{t("INFORMATION")}</b> — {t("SHIPPING")} — COD
-        </p>
-        <h1>
-          {t(order ? "order.success" : "SHIPPING")}
-          <br />
-          <i>{t(order ? "order.placed" : "INFORMATION")}</i>
-        </h1>
+    <div data-checkout-api data-checkout-source={source ? "buy_now" : "cart"}>
+      <CheckoutFrame
+        step={order ? 3 : step}
+        onStep={!busy && !request.current ? setStep : undefined}
+        summary={
+          <OrderSummary
+            items={items}
+            subtotal={order?.subtotal_vnd ?? quote?.subtotal_vnd ?? 0}
+            shipping={order?.shipping_fee_vnd ?? quote?.shipping_fee_vnd ?? 0}
+            total={order?.total_vnd ?? quote?.total_vnd ?? 0}
+          />
+        }
+      >
         {order ? (
-          <div data-order-code={order.order_code}>
-            <h2 className="break-all">{order.order_code}</h2>
-            <p>{t("order.status." + order.status)}</p>
-            <p>{t(order.payment_status === "paid" ? "order.paid" : "order.codPending")}</p>
-            <p>{money(order.total_vnd)}</p>
-            <button className="ink-btn" onClick={onOrders}>
-              {t("ORDER HISTORY")}
-            </button>
-          </div>
+          <>
+            <OrderReceipt order={order} />
+            <div className="checkout-actions">
+              <button
+                className="checkout-button primary"
+                onClick={() => {
+                  if (owner) sessionStorage.setItem("manga-track-order-" + owner, String(order.id));
+                  onOrders();
+                }}
+              >
+                {t("checkout.track")} →
+              </button>
+              <button className="checkout-button secondary" onClick={onHome}>
+                {t("checkout.continueShopping")}
+              </button>
+            </div>
+          </>
         ) : loading ? (
           <p role="status">{t("order.loading")}</p>
         ) : quote ? (
-          <form onSubmit={(e) => void submit(e)}>
-            <label>
-              {t("order.recipient")}
-              <input
-                name="recipient_name"
-                autoComplete="name"
-                maxLength={150}
-                required
-                value={fields.recipient_name}
-                onChange={(e) => update("recipient_name", e.target.value)}
-                disabled={busy || !!request.current}
-              />
-            </label>
-            <label>
-              {t("order.phone")}
-              <input
-                name="recipient_phone"
-                type="tel"
-                autoComplete="tel"
-                maxLength={20}
-                required
-                value={fields.recipient_phone}
-                onChange={(e) => update("recipient_phone", e.target.value)}
-                disabled={busy || !!request.current}
-              />
-            </label>
-            <div className="form-grid">
-              <label>
-                {t("order.province")}
-                <input
-                  name="province"
-                  maxLength={120}
-                  required
-                  value={fields.province}
-                  onChange={(e) => update("province", e.target.value)}
+          <form noValidate onSubmit={(e) => void submit(e)} aria-busy={busy}>
+            {quote.payment_simulation && (
+              <p className="checkout-sandbox">{t("checkout.sandboxOrder")}</p>
+            )}
+            <h2 ref={stepHeading} tabIndex={-1}>
+              {t(step === 1 ? "checkout.shippingAddress" : "checkout.paymentMethod")}
+            </h2>
+            {step === 1 ? (
+              <>
+                <ShippingForm
+                  fields={fields}
+                  onChange={update}
+                  errors={errors}
                   disabled={busy || !!request.current}
                 />
-              </label>
-              <label>
-                {t("order.ward")}
-                <input
-                  name="ward"
-                  maxLength={120}
-                  required
-                  value={fields.ward}
-                  onChange={(e) => update("ward", e.target.value)}
+                <section className="checkout-shipping">
+                  <h2>{t("checkout.shippingMethod")}</h2>
+                  <label>
+                    <input type="radio" name="shipping_method" checked readOnly />
+                    {t("checkout.standardShipping")}
+                    <strong>{money(quote.shipping_fee_vnd)}</strong>
+                  </label>
+                  <p>{t("order.demoShipping")}</p>
+                </section>
+                <button className="checkout-button primary" type="submit">
+                  {t("checkout.toPayment")} →
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="checkout-address">
+                  <b>
+                    {fields.recipient_name} · {fields.recipient_phone}
+                  </b>
+                  <p>
+                    {[fields.address_line, fields.ward, fields.district, fields.province]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy || !!request.current}
+                    onClick={() => setStep(1)}
+                  >
+                    {t("checkout.editAddress")}
+                  </button>
+                </div>
+                <PaymentChoices
+                  choice={choice}
+                  onChange={setChoice}
+                  bankReady={quote.payment_options.bank_transfer}
+                  qrReady={quote.payment_options.vietqr}
                   disabled={busy || !!request.current}
                 />
-              </label>
-            </div>
-            <label>
-              {t("ADDRESS")}
-              <input
-                name="address_line"
-                autoComplete="street-address"
-                maxLength={255}
-                required
-                value={fields.address_line}
-                onChange={(e) => update("address_line", e.target.value)}
-                disabled={busy || !!request.current}
-              />
-            </label>
-            <label>
-              {t("order.note")}
-              <input
-                name="customer_note"
-                maxLength={2000}
-                value={fields.customer_note}
-                onChange={(e) => update("customer_note", e.target.value)}
-                disabled={busy || !!request.current}
-              />
-            </label>
-            <label>
-              {t("order.payment")}
-              <select name="payment_method" value="cod" disabled>
-                <option value="cod">{t("order.cod")}</option>
-              </select>
-            </label>
-            <p>{t("order.demoShipping")}</p>
-            <button className="ink-btn" type="submit" disabled={busy}>
-              {t(busy ? "order.submitting" : request.current ? "order.retry" : "order.place")}
-            </button>
+                <p className="checkout-note">
+                  {t(choice === "cod" ? "checkout.codPending" : "checkout.bankPending")}
+                </p>
+                <p className="checkout-action-total">
+                  {t("checkout.total")} <strong>{money(quote.total_vnd)}</strong>
+                </p>
+                <div className="checkout-actions">
+                  <button
+                    className="checkout-button secondary"
+                    type="button"
+                    disabled={busy || !!request.current}
+                    onClick={() => setStep(1)}
+                  >
+                    {t("checkout.back")}
+                  </button>
+                  <button className="checkout-button primary" type="submit" disabled={busy}>
+                    {t(
+                      busy
+                        ? "order.submitting"
+                        : request.current
+                          ? "order.retry"
+                          : "checkout.place",
+                    )}{" "}
+                    →
+                  </button>
+                </div>
+              </>
+            )}
           </form>
         ) : null}
-        {source && !order && (
-          <button type="button" className="buy-now-cancel" disabled={busy} onClick={onHome}>
+        {!order && (
+          <button className="checkout-cancel" type="button" disabled={busy} onClick={onHome}>
             {t("buy.cancel")}
           </button>
         )}
         {error && (
-          <div role="alert">
+          <div className="checkout-error" role="alert">
             <p>{t("order.error." + error)}</p>
             {error === "UNAUTHENTICATED" && (
               <button
-                type="button"
-                className="ink-btn"
+                className="checkout-button"
                 onClick={() => {
+                  if (owner) rememberCheckoutDraft(owner, storageKey, fields);
                   void refresh().then(onAccount);
                 }}
               >
@@ -311,55 +363,13 @@ export function ApiCheckout({
               </button>
             )}
             {!quote && !order && (
-              <button className="ink-btn ink-btn-ghost" onClick={() => setAttempt((x) => x + 1)}>
+              <button className="checkout-button" onClick={() => setAttempt((x) => x + 1)}>
                 {t("TRY AGAIN")}
               </button>
             )}
           </div>
         )}
-      </section>
-      <aside>
-        <span>{t("order.summary")} / 注文</span>
-        {(order
-          ? order.items.map((i) => ({
-              id: i.product_id,
-              name: language === "vi" ? i.name_vi_snapshot : i.name_en_snapshot,
-              quantity: i.quantity,
-              total: i.line_total_vnd,
-            }))
-          : (quote?.items.map((i) => ({
-              id: i.product_id,
-              name: language === "vi" ? i.name_vi : i.name_en,
-              quantity: i.quantity,
-              total: i.line_total_vnd,
-            })) ?? [])
-        ).map((i, index) => (
-          <div className="checkout-item" key={index}>
-            <ProductImage
-              src={cart.find((p) => p.id === i.id)?.image || PRODUCT_PLACEHOLDER}
-              alt=""
-            />
-            <div>
-              <b>{i.name}</b>
-              <small>× {i.quantity}</small>
-            </div>
-            <strong>{money(i.total)}</strong>
-          </div>
-        ))}
-        <hr />
-        <div>
-          <p>{t("SUBTOTAL")}</p>
-          <b>{money(order?.subtotal_vnd ?? quote?.subtotal_vnd ?? 0)}</b>
-        </div>
-        <div>
-          <p>{t("SHIPPING")}</p>
-          <b>{money(order?.shipping_fee_vnd ?? quote?.shipping_fee_vnd ?? 0)}</b>
-        </div>
-        <div className="checkout-total">
-          <p>TOTAL / VND</p>
-          <b>{money(order?.total_vnd ?? quote?.total_vnd ?? 0)}</b>
-        </div>
-      </aside>
-    </main>
+      </CheckoutFrame>
+    </div>
   );
 }

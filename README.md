@@ -113,3 +113,45 @@ Shop giữ Hero/Card Manga Editorial, có toolbar/sidebar lọc thật, grid4/2/
 
 
 Giai đoạn 12C: Live Buy Now dùng cùng Checkout COD với Cart, hỗ trợ quantity từ Product Detail, quote/tổng tiền server và idempotency; không ghi/xóa cart. Product Cards thống nhất Mua ngay / Thêm vào giỏ, ảnh và tên mở chi tiết, bỏ action bar lặp tại Series/Collections. Demo không gọi Order API. Chi tiết contract, kiểm thử cô lập, screenshot và backup ở mục Giai đoạn 12C trong [docs/API.md](docs/API.md).
+
+
+## Giai đoạn 13 — Checkout ba bước & Sandbox
+
+Checkout Cart/Buy Now dùng chung ba bước Thông tin → Thanh toán → Hoàn tất, có trang hoàn tất đọc lại đơn khi refresh và Order History/Detail mới. COD hoạt động trên Live. Chuyển khoản/VietQR thật đang tắt theo yêu cầu chủ dự án; Sandbox chỉ tạo đơn mô phỏng trong database test, QR không chứa tài khoản/lệnh chuyển tiền. Admin đối soát có amount/reference và chống biên nhận trùng; Reports tách COD/bank/tổng đã xác nhận. Không migration hoặc ghi dữ liệu kiểm thử vào database chính. Cấu hình, API, file, kiểm thử, screenshot và rollback xem mục Giai đoạn 13 trong [docs/API.md](docs/API.md).
+
+
+## Giai đoạn 14 — Vũ trụ của tôi
+
+Account dùng Barlow Condensed/Inter và CSS scoped trong `frontend/src/account/account.css`; Hero outline, sidebar hồ sơ, bốn thống kê, lịch sử dạng hàng/card responsive. Không sửa Header/Footer/Home/Shop hoặc CSS toàn cục.
+
+### Dữ liệu và điều hướng
+- Auth session cung cấp ID, tên, email, role và ngày tạo tài khoản. Avatar lấy initials; hồ sơ chỉ đọc vì chưa có API cập nhật.
+- Tổng đơn: COUNT orders theo session user; đang xử lý: pending + confirmed + processing + shipping; yêu thích: danh sách Wishlist hiện có; đã giao: delivered. Không có hệ thống điểm thành viên nên thẻ thứ tư là Đơn đã giao.
+- `#account`, `#account/orders`, `#account/orders/<id>`, `#account/information`; query `status` và `page` giữ lọc/phân trang khi refresh/Back/Forward. Wishlist và logout tái sử dụng chức năng cũ.
+- Order Detail, snapshot, hướng dẫn Sandbox và hủy đơn dùng OrdersPanel/OrderReceipt hiện có. Trạng thái thanh toán lấy backend; không suy ra paid từ delivered hoặc từ việc xem QR.
+- Demo không gọi Order API, hiển thị chỉ số đơn chưa khả dụng thay vì số liệu giả. Không bổ sung loyalty hoặc chỉnh sửa hồ sơ.
+
+### API đọc bổ sung, tương thích ngược
+`GET /api/orders/index.php?view=account&status=all&page=1&per_page=10`
+
+Session bắt buộc; user_id lấy từ server. `status`: all/pending/confirmed/processing/shipping/delivered/cancelled; `per_page`: 10/20/50. Response data gồm `items`, `counts`, `total_orders`, `total`, `page`, `pages`, `page_size`. Tổng theo trạng thái không bị giới hạn bởi trang hiện tại. Sort created_at DESC, id DESC; clamp trang không hợp lệ sau thay đổi dữ liệu. Truy vấn trong transaction READ ONLY REPEATABLE READ; payments có UNIQUE order_id, không nhân đôi đơn. Không có view thì response array cũ vẫn giữ nguyên. Không migration hoặc API ghi mới.
+
+### Kiểm thử thực tế
+- `test_account_read.py`: 105 đơn tài khoản A, 3 đơn B trên database cô lập; phân trang không trùng/mất, đủ sáu trạng thái, validation422, guest401, sở hữu404, response cũ và đối chiếu 17 bảng trước/sau đọc: PASS.
+- Chrome `check_account_dashboard.mjs`: 1440/900/390, VI/EN, dữ liệu thật từ fixture cô lập, lọc/phân trang/deep link/refresh/Back/Forward, Wishlist, logout/đổi tài khoản, keyboard/hover/touch, hủy một đơn Sandbox tạo qua API và hoàn kho một lần: PASS.
+- `check_account_edges.mjs`: loading không hiển thị 0 giả, lỗi API/retry/session hết hạn: PASS. `check_account_demo.mjs`: không gọi Order API, không overflow ba viewport: PASS.
+- Hồi quy Chrome Checkout Phase13 COD/Buy Now/Bank/VietQR Sandbox, API Admin, API Reports và Chrome catalog Live: PASS. Không chuyển tiền thật.
+- Vite production build, TypeScript noEmit, PHP lint ba file mới/sửa và git diff --check: PASS (Git có cảnh báo line ending thông thường).
+- Bằng chứng nằm trong `frontend/.artifacts/14-*.json` và `14-*.png`. Screenshot sử dụng tài khoản/dữ liệu mô phỏng trong database cô lập, không phải đơn chính. Không tuyên bố pixel-perfect.
+
+### File Giai đoạn 14
+Thêm `frontend/src/account/{AccountDashboard.tsx,account.css,accountService.ts,routes.ts}`, `backend/src/AccountOrderRead.php`; sửa `App.tsx`, `i18n.tsx`, `AccountPanel.tsx`, `OrdersPanel.tsx` và nhánh index đọc trong `orders_bootstrap.php`. Thêm fixture/API/Chrome tests Account; điều chỉnh bốn regression harness để chấp nhận nhãn LOG OUT. Các thay đổi Giai đoạn 13 có sẵn không thuộc phạm vi Giai đoạn 14.
+
+Đối chiếu snapshot riêng `C:/xampp/manga-store-backups/2026-11-26-account/before.json` và `after.json`: toàn bộ schema và SHA256 dữ liệu 17 bảng chính giống nhau; 31 sản phẩm (23 active/8 archived), 37 ảnh, 18 series, 2 đơn được giữ nguyên. Không ghi dữ liệu kiểm thử vào database chính. Kết quả không chứa thông tin riêng tư: `frontend/.artifacts/14-preservation.json`.
+
+Khôi phục giao diện nếu cần: dùng bản sao source trước Giai đoạn 14 tại thư mục backup trên để phục hồi riêng năm file đã sửa và loại bỏ các file Account mới; không phục hồi toàn bộ commit hay database vì sẽ ảnh hưởng công việc khác. Không cần rollback schema/dữ liệu.
+
+
+## Giai đoạn 15 — Product Detail Accordion
+
+Ba mục thông tin đã có toggle độc lập, VI/EN, keyboard/touch và nội dung theo catalog xác minh. Xem [báo cáo, nguồn metadata, giới hạn chính sách và screenshot](docs/PHASE15_PRODUCT_ACCORDION.md). Không migration hoặc thay dữ liệu chính.

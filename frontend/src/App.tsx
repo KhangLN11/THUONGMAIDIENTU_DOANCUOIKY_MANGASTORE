@@ -1,3 +1,7 @@
+import { ProductInfoAccordion } from "./components/product-information/ProductInfoAccordion";
+import {discardOtherCheckoutDraft} from "./checkout/resumeDraft";
+import {completionId} from "./checkout/routes";
+import {DemoCheckout} from "./checkout/DemoCheckout";
 import "./shop/product-actions.css";
 import { ShopCatalog } from "./shop/ShopCatalog";
 import { initialShopFilters,demoProductId } from "./shop/shopModel";
@@ -811,17 +815,7 @@ function ProductPage({ add, go, product }: { add: (p: Product) => void; go: (p: 
           <button className="buy" disabled={actions.pending || (p.source==="api" && (p.stockQuantity??0)<qty)} onClick={() => actions.buy(p,qty)}>
             {t("BUY NOW")}
           </button>
-          <div className="accordions">
-            <button>
-              DETAILS & DIMENSIONS <Icon name="plus" />
-            </button>
-            <button>
-              SHIPPING & RETURNS <Icon name="plus" />
-            </button>
-            <button>
-              AUTHENTICITY GUARANTEE <Icon name="plus" />
-            </button>
-          </div>
+          <ProductInfoAccordion key={p.id} product={p} />
         </div>
       </div>
       <section className="related">
@@ -1037,96 +1031,8 @@ function Cart({
   );
 }
 
-function Checkout({ cart, go }: { cart: Product[]; go: (p: Page, id?: number) => void }) {
-  const { t, formatCurrency: currency } = useI18n();
-  const formatCurrency = (value: number) => currency(value, USE_PRODUCTS_API ? "VND" : "USD");
-  const total = cart.reduce((a, p) => a + p.price, 0);
-  return (
-    <main className="checkout">
-      <section>
-        <button className="brand checkout-brand" onClick={() => go("home")}>
-          <span>MU</span>MANGA UNIVERSE
-        </button>
-        <p className="steps">
-          {t("CART")} — <b>{t("INFORMATION")}</b> — {t("SHIPPING")} — {t("PAYMENT")}
-        </p>
-        <h1>
-          SHIPPING
-          <br />
-          <i>INFORMATION</i>
-        </h1>
-        <form onSubmit={(e) => e.preventDefault()}>
-          <label>
-            EMAIL ADDRESS
-            <input type="email" placeholder="YOU@EXAMPLE.COM" />
-          </label>
-          <div className="form-grid">
-            <label>
-              FIRST NAME
-              <input placeholder="AKIRA" />
-            </label>
-            <label>
-              LAST NAME
-              <input placeholder="KUROSAWA" />
-            </label>
-          </div>
-          <label>
-            ADDRESS
-            <input placeholder="STREET AND NUMBER" />
-          </label>
-          <div className="form-grid three">
-            <label>
-              CITY
-              <input placeholder="TOKYO" />
-            </label>
-            <label>
-              COUNTRY
-              <select>
-                <option>JAPAN</option>
-                <option>UNITED STATES</option>
-                <option>UNITED KINGDOM</option>
-              </select>
-            </label>
-            <label>
-              POSTCODE
-              <input placeholder="000-0000" />
-            </label>
-          </div>
-          <Button>CONTINUE TO SHIPPING</Button>
-        </form>
-      </section>
-      <aside>
-        <span>ORDER / 注文</span>
-        {cart.map((p, i) => (
-          <div className="checkout-item" key={`${p.id}-${i}`}>
-            <ProductImage src={p.image} alt="" />
-            <div>
-              <b data-product-text={p.source ? "true" : undefined}>{p.name}</b>
-              <small data-product-text={p.source ? "true" : undefined}>{p.series}</small>
-            </div>
-            <strong>{formatCurrency(p.price)}</strong>
-          </div>
-        ))}
-        <hr />
-        <div>
-          <p>SUBTOTAL</p>
-          <b>{formatCurrency(total)}</b>
-        </div>
-        <div>
-          <p>SHIPPING</p>
-          <b>—</b>
-        </div>
-        <div className="checkout-total">
-          <p>{USE_PRODUCTS_API ? "TOTAL / VND" : "TOTAL / USD"}</p>
-          <b>{formatCurrency(total)}</b>
-        </div>
-      </aside>
-    </main>
-  );
-}
-
-function Account({ go, wishes, onOrderChanged }: { go: (p: Page, id?: number) => void; wishes: number[]; onOrderChanged: () => void }) {
-  return <AccountPanel onShop={() => go("shop")} onWishlist={() => go("wishlist")} onOrderChanged={onOrderChanged} wishes={wishes} />;
+function Account({ go, wishes, onOrderChanged,wishlistPending,wishlistError,onRetryWishlist }: { go: (p: Page, id?: number) => void; wishes: number[]; onOrderChanged: () => void;wishlistPending:boolean;wishlistError:string|null;onRetryWishlist:()=>void }) {
+  return <AccountPanel onShop={() => go("shop")} onWishlist={() => go("wishlist")} onOrderChanged={onOrderChanged} wishes={wishes} wishlistPending={wishlistPending} wishlistError={wishlistError} onRetryWishlist={onRetryWishlist}/>;
 }
 
 function Footer({ go }: { go: (p: Page, id?: number) => void }) {
@@ -1195,15 +1101,17 @@ export default function App() {
 function StoreApp() {
   const {user:checkoutUser}=useAuth();
   const returnBuyAfterLogin=useRef(false);
+  useEffect(()=>{if(checkoutUser)discardOtherCheckoutDraft(checkoutUser.id);},[checkoutUser?.id]);
   const { language, t } = useI18n();
   useTranslateDocument();
-  const [page, setPage] = useState<Page>(() => !USE_PRODUCTS_API && demoProductId(window.location.hash)!==null ? "product" : isBuyNowRoute(window.location.hash) ? "checkout" : discoveryRoute(window.location.hash) && (USE_PRODUCTS_API || discoveryRoute(window.location.hash)!.page !== "product") ? discoveryRoute(window.location.hash)!.page : window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : window.location.hash === "#account" ? "account" : "home");
+  const [page, setPage] = useState<Page>(() => !USE_PRODUCTS_API && demoProductId(window.location.hash)!==null ? "product" : (isBuyNowRoute(window.location.hash)||completionId()!==null) ? "checkout" : discoveryRoute(window.location.hash) && (USE_PRODUCTS_API || discoveryRoute(window.location.hash)!.page !== "product") ? discoveryRoute(window.location.hash)!.page : window.location.hash === "#checkout" ? "checkout" : window.location.hash === "#wishlist" ? "wishlist" : window.location.hash === "#cart" ? "cart" : (window.location.hash === "#account"||window.location.hash.startsWith("#account/")||window.location.hash.startsWith("#account?")) ? "account" : "home");
   useEffect(() => {
     const openAccount = () => { const hash = window.location.hash;
       if(!USE_PRODUCTS_API && demoProductId(hash)!==null){setPage("product");setSelectedId(demoProductId(hash));setProductOrigin("#shop");return;}
-      if(isBuyNowRoute(hash)){setPage("checkout");return;}
+      if(isBuyNowRoute(hash)||completionId(hash)!==null){setPage("checkout");return;}
       const candidate=discoveryRoute(hash); const route=candidate && (USE_PRODUCTS_API || candidate.page!=="product")?candidate:null;
       if(route){setPage(route.page);if(route.page==="series")setSelectedSeriesSlug(route.slug);if(route.page==="product"){setSelectedId(route.id);const origin=window.history.state?.mangaOrigin;setProductOrigin(typeof origin==="string"&&discoveryRoute(origin)?origin:null);}if(route.page==="collections")setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:route.slug??"all"}}));return;}
+      if(hash.startsWith("#account/")||hash.startsWith("#account?")){setPage("account");return;}
       if(hash==="")setPage("home"); if (hash === "#checkout" || hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
     window.addEventListener("hashchange", openAccount);
     window.addEventListener("popstate", openAccount);
@@ -1234,7 +1142,7 @@ function StoreApp() {
     return () => { if (toastTimer.current !== undefined) window.clearTimeout(toastTimer.current); };
   }, [commerce.accountKey]);
   const go = (p: Page, id?: number) => {
-    if(p=== "checkout"){clearBuyNowIntent();setBuyIntent(null);}
+    if(p=== "checkout"){setToast("");clearBuyNowIntent();setBuyIntent(null);}
     if(p==="series"){openSeries(null);return;}
     if(p==="collections"){openFigures();return;}
     if(!USE_PRODUCTS_API&&p==="product"){
@@ -1273,13 +1181,14 @@ function StoreApp() {
   const resumeBuyNow=()=>{if(!buyIntent)return;setToast("");window.history.pushState(null,"","#checkout/buy-now/"+buyIntent.productId);setPage("checkout");window.scrollTo({top:0,behavior:"smooth"});};
   const beginBuyNow=(p:Product,quantity=1)=>{if(!Number.isInteger(quantity)||quantity<1||quantity>999||(USE_PRODUCTS_API&&(p.source!=="api"||(p.stockQuantity??0)<quantity)))return;setToast("");setBuyIntent(saveBuyNowIntent(p.id,quantity));window.history.pushState(null,"","#checkout/buy-now/"+p.id);setPage("checkout");window.scrollTo({top:0,behavior:"smooth"});};
   useEffect(()=>{if(returnBuyAfterLogin.current&&checkoutUser&&page==="account"&&buyIntent){returnBuyAfterLogin.current=false;resumeBuyNow();}},[checkoutUser?.id,page,buyIntent]);
+  useEffect(()=>{if(page!=="account"||!checkoutUser)return;const route=sessionStorage.getItem("manga-checkout-return");if(route&&completionId(route)!==null){sessionStorage.removeItem("manga-checkout-return");history.pushState(null,"",route);setPage("checkout");}},[checkoutUser?.id,page]);
   const cancelBuyNow=()=>{clearBuyNowIntent();setBuyIntent(null);};
   const renderShopProduct=(p:Product)=><ProductCard key={p.id} product={p} onOpen={()=>go("product",p.id)} onAdd={()=>add(p)} wish={wishes.includes(p.id)} onWish={()=>toggleWish(p.id)} shopActions={{buy:()=>beginBuyNow(p),pending:commerce.loading||commerce.busy}}/>;
   const renderDiscoveryProduct=(p:Product)=><div className="discovery-product-item" key={p.id} data-discovery-product={p.id}><ProductCard product={p} onOpen={()=>go("product",p.id)} onAdd={()=>add(p)} wish={wishes.includes(p.id)} onWish={()=>toggleWish(p.id)}/></div>;
   if (adminRoute) return <AdminApp />;
   return (
     <PurchaseActions.Provider value={{buy:beginBuyNow,pending:commerce.loading||commerce.busy,add,wish:toggleWish,wishes}}><div className="app">
-      {page !== "checkout" && <Header go={go} cartCount={cart.length} activePage={page === "product" ? (productOrigin?.startsWith("#series") ? "series" : productOrigin?.startsWith("#collections") ? "collections" : "shop") : page} />}
+      {<Header go={go} cartCount={cart.length} activePage={page === "product" ? (productOrigin?.startsWith("#series") ? "series" : productOrigin?.startsWith("#collections") ? "collections" : "shop") : page} />}
       {USE_PRODUCTS_API && commerce.loading && <p role="status">{t("commerce.loading")}</p>}
       {USE_PRODUCTS_API && commerce.error && <div role="alert"><p>{t(`commerce.error.${commerce.error}`)}</p><button onClick={() => void commerce.retry()}>{t("TRY AGAIN")}</button></div>}
       {page === "wishlist" && <Shop seriesSlug={null} wishlistOnly commercePending={commerce.loading} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
@@ -1292,10 +1201,10 @@ function StoreApp() {
       {page === "collections" && !USE_PRODUCTS_API && <main className="discovery-surface discovery-collections-page" data-product-text><section className="discovery-figures" data-figure-collections><div className="discovery-section-heading"><div><p className="discovery-kicker">DEMO / ANIME COLLECTIONS</p><h2>{t("discovery.reality")}</h2><p>{t("discovery.figuresIntro")}</p></div></div><div className="product-grid discovery-figure-grid">{demoProducts.filter(p => p.category === "Figures" || p.category === "Accessories").map(p => <ProductCard key={p.id} product={p} onOpen={() => go("product", p.id)} onAdd={() => add(p)} wish={wishes.includes(p.id)} onWish={() => toggleWish(p.id)} />)}</div></section></main>}
       {page === "cart" && <Cart cart={cart} setCart={setCart} go={go} onQuantity={commerce.quantity} serverSubtotal={commerce.subtotal} lineTotals={commerce.lineTotals} busy={commerce.busy || commerce.loading} pending={commerce.loading || !!commerce.error} />}
       {page === "checkout" && isBuyNowRoute(window.location.hash) && <BuyNowCheckout key={window.location.hash} intent={buyIntent?.productId===buyNowId(window.location.hash)?buyIntent:null} onShop={()=>{cancelBuyNow();go("shop");}} onAccount={()=>{returnBuyAfterLogin.current=true;go("account");}} onOrders={()=>{cancelBuyNow();go("account");}} onPlaced={async()=>{setBuyIntent(null);catalog.retry();}}/>}
-      {page === "checkout" && !isBuyNowRoute(window.location.hash) && (USE_PRODUCTS_API ? <ApiCheckout key={commerce.accountKey ?? "guest"} cart={cart} pending={commerce.loading} onHome={() => go("home")} onAccount={() => go("account")} onOrders={() => go("account")} onPlaced={async () => { await commerce.retry(); catalog.retry(); }} /> : <Checkout cart={cart} go={go} />)}
+      {page === "checkout" && !isBuyNowRoute(window.location.hash) && (USE_PRODUCTS_API ? <ApiCheckout key={(completionId()!==null?"receipt-"+completionId()+"-":"")+(commerce.accountKey ?? "guest")} completedOrderId={completionId()} cart={cart} pending={commerce.loading} onHome={() => go("shop")} onAccount={() => go("account")} onOrders={() => go("account")} onPlaced={async () => { await commerce.retry(); catalog.retry(); }} /> : <DemoCheckout cart={cart} onShop={()=>go("shop")} />)}
       {page === "account" && <BuyNowResume intent={buyIntent} onContinue={resumeBuyNow} onCancel={cancelBuyNow}/>}
-      {page === "account" && <Account go={go} wishes={wishes} onOrderChanged={() => { void commerce.retry(); catalog.retry(); }} />}
-      {page !== "checkout" && <Footer go={go} />}
+      {page === "account" && <Account go={go} wishes={wishes} wishlistPending={commerce.loading} wishlistError={commerce.error} onRetryWishlist={()=>void commerce.retry()} onOrderChanged={() => { void commerce.retry(); catalog.retry(); }} />}
+      {<Footer go={go} />}
       {toast && toastOwner.current === commerce.accountKey && (
         <div className="toast">
           <span>✓</span>

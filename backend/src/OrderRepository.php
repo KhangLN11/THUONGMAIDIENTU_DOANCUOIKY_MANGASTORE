@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/PaymentSettings.php';
 final class OrderException extends RuntimeException
 {
     public string $errorCode; public int $status;
@@ -38,7 +39,7 @@ final class OrderRepository
         return ['cart_id'=>(int)$id,'items'=>$lines,'subtotal_vnd'=>$total,'shipping_fee_vnd'=>$this->fee,'discount_vnd'=>0,'total_vnd'=>$total+$this->fee,
             'currency'=>'VND','quote_fingerprint'=>hash('sha256',json_encode($selection===null?[$fingerprint,$this->fee]:['buy_now',$fingerprint,$this->fee],JSON_THROW_ON_ERROR))];
     }
-    public function quote(?array $selection=null):array{return $this->cart(false,$selection);}
+    public function quote(?array $selection=null):array{$q=$this->cart(false,$selection);$ready=PaymentSettings::account($this->pdo)!==null&&strlen((string)$q['total_vnd'])<=13;return $q+['payment_options'=>['cod'=>true,'bank_transfer'=>$ready,'vietqr'=>$ready],'payment_simulation'=>(PaymentSettings::account($this->pdo)['simulation']??false)];}
     private function byKey(string $key,bool $lock=false):?array{
         $s=$this->pdo->prepare('SELECT id,checkout_request_hash FROM orders WHERE user_id=? AND idempotency_key=?'.($lock?' FOR UPDATE':''));$s->execute([$this->userId,$key]);return $s->fetch()?:null;
     }
@@ -56,6 +57,7 @@ final class OrderRepository
                 $existing=$this->byKey($key,true);if($existing){$this->pdo->commit();return $this->replay($existing,$hash);}
                 $quote=$this->cart(true,$selection);
                 if(!hash_equals($quote['quote_fingerprint'],$input['quote_fingerprint']))throw new OrderException('QUOTE_CHANGED');
+                if($input['payment_method']==='bank_transfer'&&(PaymentSettings::account($this->pdo)===null||strlen((string)$quote['total_vnd'])>13))throw new OrderException('PAYMENT_UNAVAILABLE');
                 $code='MS-'.date('Ymd').'-'.strtoupper(bin2hex(random_bytes(8)));
                 $address=[$input['recipient_name'],$input['recipient_phone'],$input['province'],$input['district'],$input['ward'],$input['address_line']];
                 $s=$this->pdo->prepare('INSERT INTO addresses(user_id,recipient_name,recipient_phone,province,district,ward,address_line,is_default) VALUES(?,?,?,?,?,?,?,0)');$s->execute(array_merge([$this->userId],$address));
@@ -66,7 +68,7 @@ final class OrderRepository
                     $s=$this->pdo->prepare("UPDATE products SET stock_quantity=stock_quantity-? WHERE id=? AND stock_quantity>=? AND status='active'");$s->execute([$line['quantity'],$line['product_id'],$line['quantity']]);if($s->rowCount()!==1)throw new OrderException('INSUFFICIENT_STOCK');
                     $s=$this->pdo->prepare("INSERT INTO inventory_movements(product_id,order_id,actor_user_id,quantity_delta,reason,note) VALUES(?,?,?,?,'sale',?)");$s->execute([$line['product_id'],$id,$this->userId,-$line['quantity'],$code]);
                 }
-                $s=$this->pdo->prepare("INSERT INTO payments(order_id,method,status,amount_vnd) VALUES(?,'cod','pending',?)");$s->execute([$id,$quote['total_vnd']]);
+                $s=$this->pdo->prepare("INSERT INTO payments(order_id,method,status,amount_vnd) VALUES(?,?,'pending',?)");$s->execute([$id,$input['payment_method'],$quote['total_vnd']]);
                 $s=$this->pdo->prepare("INSERT INTO shipments(order_id,status) VALUES(?,'pending')");$s->execute([$id]);
                 if($selection===null){$s=$this->pdo->prepare('DELETE FROM cart_items WHERE cart_id=?');$s->execute([$quote['cart_id']]);}
                 $this->pdo->commit();return ['order'=>$this->detail($id),'replayed'=>false];
@@ -83,15 +85,17 @@ final class OrderRepository
         return ['order'=>$this->detail((int)$row['id']),'replayed'=>true];
     }
     public function index():array{
-        $s=$this->pdo->prepare('SELECT id,order_code,status,total_vnd,created_at FROM orders WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 100');$s->execute([$this->userId]);
+        $s=$this->pdo->prepare('SELECT o.id,o.order_code,o.status,o.total_vnd,o.created_at,p.method AS payment_method,p.status AS payment_status FROM orders o LEFT JOIN payments p ON p.order_id=o.id WHERE o.user_id=? ORDER BY o.created_at DESC,o.id DESC LIMIT 100');$s->execute([$this->userId]);
         return array_map(static function($r){$r['id']=(int)$r['id'];$r['total_vnd']=(int)$r['total_vnd'];return $r;},$s->fetchAll());
     }
     public function detail(int $id=0,?string $key=null):array{
         $sql='SELECT o.id,o.order_code,o.status,o.recipient_name,o.recipient_phone,o.province,o.district,o.ward,o.address_line,o.customer_note,o.subtotal_vnd,o.shipping_fee_vnd,o.discount_vnd,o.total_vnd,o.created_at,p.method AS payment_method,p.status AS payment_status,p.paid_at,s.status AS shipment_status FROM orders o LEFT JOIN payments p ON p.order_id=o.id LEFT JOIN shipments s ON s.order_id=o.id WHERE o.user_id=? AND '.($key===null?'o.id=?':'o.idempotency_key=?');
         $s=$this->pdo->prepare($sql);$s->execute([$this->userId,$key??$id]);$row=$s->fetch();if(!$row)throw new OrderException('ORDER_NOT_FOUND',404);
         foreach(['id','subtotal_vnd','shipping_fee_vnd','discount_vnd','total_vnd'] as $k)$row[$k]=(int)$row[$k];
-        $s=$this->pdo->prepare('SELECT product_id,sku_snapshot,name_vi_snapshot,name_en_snapshot,unit_price_vnd,quantity,line_total_vnd FROM order_items WHERE order_id=? ORDER BY id');$s->execute([$row['id']]);$row['items']=$s->fetchAll();
+        $s=$this->pdo->prepare('SELECT oi.product_id,oi.sku_snapshot,oi.name_vi_snapshot,oi.name_en_snapshot,oi.unit_price_vnd,oi.quantity,oi.line_total_vnd,(SELECT pi.image_url FROM product_images pi WHERE pi.product_id=oi.product_id ORDER BY pi.is_primary DESC,pi.sort_order,pi.id LIMIT 1) AS image_url FROM order_items oi WHERE oi.order_id=? ORDER BY oi.id');$s->execute([$row['id']]);$row['items']=$s->fetchAll();
         foreach($row['items'] as &$item)foreach(['product_id','unit_price_vnd','quantity','line_total_vnd'] as $k)$item[$k]=$item[$k]===null?null:(int)$item[$k];unset($item);
+        $row['simulation']=(bool)preg_match('/\Amanga_store_[a-z_]+test_[0-9]+\z/D',(string)$this->pdo->query('SELECT DATABASE()')->fetchColumn());
+        $row['payment_instructions']=PaymentSettings::instructions($this->pdo,$row);
         return $row;
     }
     public function cancel(int $id, ?int $actorUserId=null):array{
@@ -102,7 +106,7 @@ final class OrderRepository
             if($o['status']!=='pending'||$o['idempotency_key']===null)throw new OrderException('ORDER_NOT_CANCELLABLE');
             $s=$this->pdo->prepare('SELECT method,status FROM payments WHERE order_id=? FOR UPDATE');$s->execute([$id]);$pay=$s->fetch();
             $s=$this->pdo->prepare('SELECT status FROM shipments WHERE order_id=? FOR UPDATE');$s->execute([$id]);$shipment=$s->fetchColumn();
-            if(!$pay||$pay['method']!=='cod'||$pay['status']!=='pending'||$shipment!=='pending')throw new OrderException('ORDER_NOT_CANCELLABLE');
+            if(!$pay||!in_array($pay['method'],['cod','bank_transfer'],true)||$pay['status']!=='pending'||$shipment!=='pending')throw new OrderException('ORDER_NOT_CANCELLABLE');
             $s=$this->pdo->prepare('SELECT product_id,SUM(quantity) AS quantity FROM order_items WHERE order_id=? GROUP BY product_id ORDER BY product_id');$s->execute([$id]);$items=$s->fetchAll();
             foreach($items as $item){
                 if($item['product_id']===null)throw new OrderException('INVENTORY_INCONSISTENT');

@@ -287,7 +287,9 @@ function AdminOrders() {
     [error, setError] = useState<string | null>(null),
     [notice, setNotice] = useState(false),
     [received, setReceived] = useState(false),
-    [reference, setReference] = useState("");
+    [reference, setReference] = useState(""),
+    [receivedAmount,setReceivedAmount]=useState(""),
+    [transferReference,setTransferReference]=useState("");
   const query = "?" + new URLSearchParams({ q, status, page: String(page) });
   const r = useLoad(() => api.getOrders(query), [query]);
   const money = (n: number) => formatCurrency(n, "VND");
@@ -297,6 +299,7 @@ function AdminOrders() {
     setNotice(false);
     setReceived(false);
     setReference("");
+    setReceivedAmount("");setTransferReference("");
     try {
       setSelected(await api.getOrder(id));
     } catch (e) {
@@ -325,13 +328,13 @@ function AdminOrders() {
       !received ||
       !reference.trim() ||
       busy ||
-      !window.confirm(t("admin.confirmCollect"))
+      !window.confirm(t(selected.payment_method==="bank_transfer"?(selected.simulation?"checkout.adminConfirmSandbox":"checkout.adminConfirmBank"):"admin.confirmCollect"))
     )
       return;
     setBusy(true);
     setError(null);
     try {
-      setSelected(await api.confirmPayment(selected, reference.trim()));
+      setSelected(await api.confirmPayment(selected, reference.trim(),Number(receivedAmount),transferReference.trim()));
       setNotice(true);
       r.reload();
     } catch (e) {
@@ -428,12 +431,12 @@ function AdminOrders() {
               {t("admin.refresh")}
             </button>
           </div>
-          {selected.status === "delivered" &&
-            selected.payment_method === "cod" &&
+          {((selected.status === "delivered" && selected.payment_method === "cod") || (selected.status!=="cancelled" && selected.payment_method==="bank_transfer")) &&
             selected.payment_status === "pending" && (
               <div className="admin-panel">
-                <h3>{t("admin.collectCod")}</h3>
+                <h3>{t(selected.payment_method==="bank_transfer"?"checkout.adminCollectBank":"admin.collectCod")}</h3>
                 <p className="admin-caution">{t("admin.collectNotice")}</p>
+                {selected.payment_method==="bank_transfer"&&<><p>{t("checkout.reference")}: MU{selected.id}</p><label>{t("checkout.amount")}<input name="received_amount" type="number" min="0" step="1" value={receivedAmount} onChange={e=>setReceivedAmount(e.target.value)}/></label><label>{t("checkout.reference")}<input name="received_payment_reference" value={transferReference} onChange={e=>setTransferReference(e.target.value)}/></label></>}
                 <label>
                   {t("admin.receiptRef")}
                   <input
@@ -450,14 +453,14 @@ function AdminOrders() {
                     checked={received}
                     onChange={(e) => setReceived(e.target.checked)}
                   />
-                  {t("admin.received")}
+                  {t(selected.payment_method==="bank_transfer"?(selected.simulation?"checkout.adminReceivedSandbox":"checkout.adminReceivedBank"):"admin.received")}
                 </label>
                 <button
                   className="admin-button primary"
                   disabled={busy || !received || !reference.trim()}
                   onClick={() => void collect()}
                 >
-                  {t("admin.collectCod")}
+                  {t(selected.payment_method==="bank_transfer"?"checkout.adminCollectBank":"admin.collectCod")}
                 </button>
               </div>
             )}

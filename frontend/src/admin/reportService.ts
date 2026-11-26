@@ -12,6 +12,8 @@ export type Overview = {
   sold_quantity: number;
   collected_orders: number;
   collected_cod_vnd: string;
+  collected_bank_vnd: string;
+  collected_total_vnd: string;
   created_order_value_vnd: string;
   average_order_vnd: string;
   average_collected_vnd: string;
@@ -22,6 +24,8 @@ export type RevenueRow = {
   collected_orders: number;
   created_order_value_vnd: string;
   collected_cod_vnd: string;
+  collected_bank_vnd: string;
+  collected_total_vnd: string;
   average_order_vnd: string;
 };
 export type ProductRow = {
@@ -117,6 +121,8 @@ export async function getReport(f: ReportFilter): Promise<Report> {
         sold_quantity: integer(o.sold_quantity),
         collected_orders: integer(o.collected_orders),
         collected_cod_vnd: money(o.collected_cod_vnd),
+        collected_bank_vnd: money(o.collected_bank_vnd),
+        collected_total_vnd: money(o.collected_total_vnd),
         created_order_value_vnd: money(o.created_order_value_vnd),
         average_order_vnd: money(o.average_order_vnd),
         average_collected_vnd: money(o.average_collected_vnd),
@@ -129,6 +135,8 @@ export async function getReport(f: ReportFilter): Promise<Report> {
           collected_orders: integer(r.collected_orders),
           created_order_value_vnd: money(r.created_order_value_vnd),
           collected_cod_vnd: money(r.collected_cod_vnd),
+          collected_bank_vnd: money(r.collected_bank_vnd),
+          collected_total_vnd: money(r.collected_total_vnd),
           average_order_vnd: money(r.average_order_vnd),
         };
       }),
