@@ -1,3 +1,10 @@
+import { GlobalSearch } from "./search/GlobalSearch";
+import { shopQuery } from "./search/searchRoute";
+import "./responsive/mobile-information.css";
+import "./responsive/mobile-account.css";
+import "./responsive/mobile-shopping.css";
+import "./responsive/mobile-cards.css";
+import "./responsive/mobile-discovery.css";
 import { ProductInfoAccordion } from "./components/product-information/ProductInfoAccordion";
 import {discardOtherCheckoutDraft} from "./checkout/resumeDraft";
 import {completionId} from "./checkout/routes";
@@ -208,6 +215,10 @@ function Button({
 
 function Header({ go, cartCount, activePage }: { go: (p: Page, id?: number) => void; cartCount: number; activePage: Page }) {
   const [open, setOpen] = useState(false);
+  const [searchOpen,setSearchOpen]=useState(false);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const menuNav = useRef<HTMLElement>(null);
+  useEffect(() => { if (open) menuNav.current?.querySelector<HTMLButtonElement>("button")?.focus(); }, [open]);
   const { language, setLanguage, t } = useI18n();
   const links: [string, Page][] = [
     [t("HOME"), "home"],
@@ -223,7 +234,14 @@ function Header({ go, cartCount, activePage }: { go: (p: Page, id?: number) => v
         <br />
         UNIVERSE
       </button>
-      <nav className={open ? "open" : ""}>
+      <nav ref={menuNav} id="store-navigation" className={open ? "open" : ""} onKeyDown={(e) => {
+        if (!open) return;
+        if (e.key === "Escape") { e.preventDefault(); setOpen(false); menuTrigger.current?.focus(); }
+        if (e.key === "Tab") {
+          const nodes = Array.from(e.currentTarget.querySelectorAll<HTMLElement>("button,a[href]")).filter(n => n.getClientRects().length > 0);
+          if ((e.shiftKey && document.activeElement === nodes[0]) || (!e.shiftKey && document.activeElement === nodes[nodes.length - 1])) { e.preventDefault(); menuTrigger.current?.focus(); }
+        }
+      }}>
         {links.map(([label, page]) => (
           <button
             key={label}
@@ -236,6 +254,11 @@ function Header({ go, cartCount, activePage }: { go: (p: Page, id?: number) => v
             {label}
           </button>
         ))}
+        <div className="mobile-nav-tools" role="group" aria-label={`${t("Search")} / ${t("Account")} / ${t("Wishlist")}`}>
+          <a href="#shop" onClick={(e) => { e.preventDefault(); setOpen(false); setSearchOpen(true); }}><Icon name="search" /><span>{t("Search")}</span></a>
+          <a href="#account" onClick={(e) => { e.preventDefault(); go("account"); setOpen(false); }}><Icon name="user" /><span>{t("Account")}</span></a>
+          <a href="#wishlist" onClick={(e) => { e.preventDefault(); go("wishlist"); setOpen(false); }}><Icon name="heart" /><span>{t("Wishlist")}</span></a>
+        </div>
       </nav>
       <div className="header-actions">
         <div className="language-switcher" role="group" aria-label="Language / Ngôn ngữ">
@@ -254,7 +277,7 @@ function Header({ go, cartCount, activePage }: { go: (p: Page, id?: number) => v
             EN
           </button>
         </div>
-        <button aria-label={t("Search")}>
+        <button aria-label={t("Search")} onClick={()=>setSearchOpen(true)}>
           <Icon name="search" />
         </button>
         <button aria-label={t("Account")} onClick={() => go("account")}>
@@ -267,10 +290,18 @@ function Header({ go, cartCount, activePage }: { go: (p: Page, id?: number) => v
           <Icon name="cart" />
           {cartCount > 0 && <b>{cartCount}</b>}
         </button>
-        <button className="menu" aria-label={t("Menu")} onClick={() => setOpen(!open)}>
+        <button ref={menuTrigger} className="menu" aria-label={t("Menu")} aria-controls="store-navigation" aria-expanded={open} onClick={() => setOpen(!open)} onKeyDown={(e) => {
+          if (!open) return;
+          if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
+          if (e.key === "Tab") {
+            const nodes = Array.from(menuNav.current?.querySelectorAll<HTMLElement>("button,a[href]") ?? []).filter(n => n.getClientRects().length > 0);
+            if (nodes.length) { e.preventDefault(); (e.shiftKey ? nodes[nodes.length - 1] : nodes[0]).focus(); }
+          }
+        }}>
           <Icon name={open ? "close" : "menu"} />
         </button>
       </div>
+      {searchOpen&&<GlobalSearch onClose={()=>setSearchOpen(false)} onProduct={p=>go("product",p.id)}/>}
     </header>
   );
 }
@@ -414,7 +445,7 @@ function Home({
   const { language, t } = useI18n();
   return (
     <>
-      <main>
+      <main className="home-page">
         <section className="hero">
           <div className="hero-copy">
             <div className="issue">
@@ -651,7 +682,7 @@ function Shop({
     : ["All", "Manga", "Figures", "Posters", "Apparel", "Accessories"];
   const priceMax = USE_PRODUCTS_API ? Math.max(1, ...seriesProducts.map(p => p.originalPrice ?? p.price)) : 150;
   return (
-    <main className="inner-page">
+    <main className={wishlistOnly ? "inner-page wishlist-page" : "inner-page"}>
       <div className="page-hero">
         <p>THE FULL ARCHIVE / 2025</p>
         <h1>
@@ -1110,7 +1141,7 @@ function StoreApp() {
       if(!USE_PRODUCTS_API && demoProductId(hash)!==null){setPage("product");setSelectedId(demoProductId(hash));setProductOrigin("#shop");return;}
       if(isBuyNowRoute(hash)||completionId(hash)!==null){setPage("checkout");return;}
       const candidate=discoveryRoute(hash); const route=candidate && (USE_PRODUCTS_API || candidate.page!=="product")?candidate:null;
-      if(route){setPage(route.page);if(route.page==="series")setSelectedSeriesSlug(route.slug);if(route.page==="product"){setSelectedId(route.id);const origin=window.history.state?.mangaOrigin;setProductOrigin(typeof origin==="string"&&discoveryRoute(origin)?origin:null);}if(route.page==="collections")setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:route.slug??"all"}}));return;}
+      if(route){if(route.page==="shop"&&hash.startsWith("#shop?")){const query=shopQuery(hash);if(query!==null)setShopFilters(f=>({...f,query,page:1}));}setPage(route.page);if(route.page==="series")setSelectedSeriesSlug(route.slug);if(route.page==="product"){setSelectedId(route.id);const origin=window.history.state?.mangaOrigin;setProductOrigin(typeof origin==="string"&&discoveryRoute(origin)?origin:null);}if(route.page==="collections")setDiscoveryFilters(f=>({...f,figure:{...f.figure,series:route.slug??"all"}}));return;}
       if(hash.startsWith("#account/")||hash.startsWith("#account?")){setPage("account");return;}
       if(hash==="")setPage("home"); if (hash === "#checkout" || hash === "#account" || hash === "#wishlist" || hash === "#cart") setPage(hash.slice(1) as Page); };
     window.addEventListener("hashchange", openAccount);
@@ -1126,7 +1157,7 @@ function StoreApp() {
   const [selectedSeriesSlug,setSelectedSeriesSlug]=useState<string|null>(()=>discoveryRoute(window.location.hash)?.page==="series"?discoveryRoute(window.location.hash)!.slug:null);
   const [discoveryFilters,setDiscoveryFilters]=useState<DiscoveryFilters>(()=>({...initialDiscoveryFilters,figure:{...initialDiscoveryFilters.figure,series:discoveryRoute(window.location.hash)?.page==="collections"?discoveryRoute(window.location.hash)!.slug??"all":"all"}}));
   const [productOrigin,setProductOrigin]=useState<string|null>(()=>{const origin=window.history.state?.mangaOrigin;return !USE_PRODUCTS_API&&demoProductId(window.location.hash)!==null?"#shop":typeof origin==='string'&&discoveryRoute(origin)?origin:null;});
-  const [shopFilters,setShopFilters]=useState(initialShopFilters);
+  const [shopFilters,setShopFilters]=useState(()=>({...initialShopFilters,query:shopQuery()??""}));
   const [buyIntent,setBuyIntent]=useState(readBuyNowIntent);
   const [shopSeriesSlug, setShopSeriesSlug] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(()=>USE_PRODUCTS_API?discoveryRoute(window.location.hash)?.id??null:demoProductId(window.location.hash));
@@ -1148,7 +1179,7 @@ function StoreApp() {
     if(!USE_PRODUCTS_API&&p==="product"){
       if(id!==undefined){setProductOrigin("#shop");setSelectedId(id);window.history.pushState({mangaOrigin:"#shop"},"","#product/demo/"+id);}else{setProductOrigin(null);setSelectedId(null);}
     }
-    if(USE_PRODUCTS_API&&p==="product"&&id!==undefined){const origin=page==="product"?productOrigin:window.location.hash==="#shop"||window.location.hash.startsWith("#series")||window.location.hash.startsWith("#collections")?window.location.hash:null;setProductOrigin(origin);window.history.pushState({mangaOrigin:origin},"","#product/"+id);}
+    if(USE_PRODUCTS_API&&p==="product"&&id!==undefined){const origin=page==="product"?productOrigin:window.location.hash.startsWith("#shop")||window.location.hash.startsWith("#series")||window.location.hash.startsWith("#collections")?window.location.hash:null;setProductOrigin(origin);window.history.pushState({mangaOrigin:origin},"","#product/"+id);}
     else if (p !== "product") window.history.pushState(null, "", "#" + p);
     if (p === "shop") setShopSeriesSlug(null);
     if (p === "product" && USE_PRODUCTS_API) {
@@ -1193,8 +1224,8 @@ function StoreApp() {
       {USE_PRODUCTS_API && commerce.error && <div role="alert"><p>{t(`commerce.error.${commerce.error}`)}</p><button onClick={() => void commerce.retry()}>{t("TRY AGAIN")}</button></div>}
       {page === "wishlist" && <Shop seriesSlug={null} wishlistOnly commercePending={commerce.loading} go={go} add={add} wishes={wishes} toggleWish={toggleWish} />}
       {page === "home" && <Home go={go} openSeries={openSeries} add={add} wishes={wishes} toggleWish={toggleWish} />}
-      {page === "shop" && <ShopCatalog seriesSlug={shopSeriesSlug} filters={shopFilters} onFilters={setShopFilters} renderProduct={renderShopProduct}/>}
-      {page === "product" && (USE_PRODUCTS_API ? <>{productOrigin&&<div className="discovery-return" data-product-text><button className="discovery-breadcrumb" onClick={returnToDiscovery}>← {t(productOrigin==="#shop"?"shop.back":productOrigin.startsWith("#collections")?"discovery.allCollections":"discovery.backSeries")}</button></div>}<ApiProductPage id={selectedId} add={add} go={go} /></> : productOrigin==="#shop" && selectedId!==null ? (demoProducts.some(p=>p.id===selectedId)?<ProductPage key={selectedId} product={demoProducts.find(p=>p.id===selectedId)!} add={add} go={go}/>:<main className="inner-page"><ProductState status="error" notFound/></main>):<ProductPage add={add} go={go} />)}
+      {page === "shop" && <ShopCatalog onProduct={p=>go("product",p.id)} seriesSlug={shopSeriesSlug} filters={shopFilters} onFilters={setShopFilters} renderProduct={renderShopProduct}/>}
+      {page === "product" && (USE_PRODUCTS_API ? <>{productOrigin&&<div className="discovery-return" data-product-text><button className="discovery-breadcrumb" onClick={returnToDiscovery}>← {t(productOrigin.startsWith("#shop")?"shop.back":productOrigin.startsWith("#collections")?"discovery.allCollections":"discovery.backSeries")}</button></div>}<ApiProductPage id={selectedId} add={add} go={go} /></> : productOrigin==="#shop" && selectedId!==null ? (demoProducts.some(p=>p.id===selectedId)?<ProductPage key={selectedId} product={demoProducts.find(p=>p.id===selectedId)!} add={add} go={go}/>:<main className="inner-page"><ProductState status="error" notFound/></main>):<ProductPage add={add} go={go} />)}
       {page === "series" && (USE_PRODUCTS_API?<>{selectedSeriesSlug===null&&<div className="series-hero-slot" data-series-hero-slot><DynamicHero openSeries={openSeries} openFigures={()=>openFigures()}/></div>}<SeriesExplorer slug={selectedSeriesSlug} openSeries={openSeries} filters={discoveryFilters} onFilters={setDiscoveryFilters} renderProduct={renderDiscoveryProduct} openFigures={openFigures}/></>:<Series go={go}/>)}
       {page === "collections" && USE_PRODUCTS_API && <FigureCollections filters={discoveryFilters} onFilters={setDiscoveryFilters} renderProduct={renderDiscoveryProduct} openFigures={openFigures}/>}
       {page === "about" && <AboutPage go={go} />}

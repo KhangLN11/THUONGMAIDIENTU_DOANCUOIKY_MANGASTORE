@@ -1,0 +1,38 @@
+/* Existing three-step checkout and Account behavior are unchanged. */
+@media (max-width: 600px) {
+  .app .mu-checkout .checkout-fields :is(input, textarea) {
+    font-size: 16px;
+    min-height: 48px;
+  }
+  .app .account-page:not(.customer-account) .page-hero {
+    padding: 30px 14px;
+  }
+  .app .account-page:not(.customer-account) .page-hero h1 {
+    font-size: clamp(46px, 14vw, 64px);
+    line-height: 1.08;
+    margin-top: 22px;
+    overflow-wrap: anywhere;
+  }
+  .app .account-page:not(.customer-account) .page-hero b {
+    font-size: 44px;
+  }
+  .app .account-page:not(.customer-account) .account-layout {
+    padding: 24px 14px 44px;
+  }
+  .app .account-page:not(.customer-account) .account-layout > section {
+    margin-top: 0;
+    min-width: 0;
+  }
+  .app .account-page:not(.customer-account) form label {
+    font-size: 12px;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+  }
+  .app .account-page:not(.customer-account) form input {
+    font-size: 16px;
+    min-height: 50px;
+  }
+  .app .account-page:not(.customer-account) form .ink-btn {
+    min-height: 48px;
+  }
+}

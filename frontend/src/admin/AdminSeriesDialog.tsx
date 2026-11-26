@@ -12,6 +12,7 @@ export function AdminSeriesDialog({
   const { t } = useI18n(),
     id = useId(),
     dialog = useRef<HTMLDialogElement>(null),
+    opener = useRef<HTMLElement | null>(null),
     saving = useRef(false);
   const [values, setValues] = useState({
     title: "",
@@ -25,11 +26,17 @@ export function AdminSeriesDialog({
     [existing, setExisting] = useState<api.Metadata["series"]>([]),
     [choice, setChoice] = useState("");
   useEffect(() => {
-    const opener = document.activeElement;
+    const element = dialog.current;
+    // Preserve the original trigger across StrictMode effect replay.
+    if (!opener.current && document.activeElement instanceof HTMLElement) {
+      opener.current = document.activeElement;
+    }
     dialog.current?.showModal();
     dialog.current?.querySelector<HTMLInputElement>('[name="series_title"]')?.focus();
     return () => {
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      requestAnimationFrame(() => {
+        if (!element?.isConnected && opener.current?.isConnected) opener.current.focus();
+      });
     };
   }, []);
   const change = (key: keyof typeof values, value: string) => {

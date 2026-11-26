@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { SmartSearchInput, useSearchQuery } from "../search/SmartSearchInput";
+import { openSearchResults } from "../search/searchRoute";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useProducts } from "../hooks/useProducts";
 import { useI18n } from "../i18n";
 import { USE_PRODUCTS_API } from "../config/products";
@@ -19,11 +21,13 @@ export function ShopCatalog({
   onFilters,
   renderProduct,
   seriesSlug,
+  onProduct,
 }: {
   filters: ShopFilters;
   onFilters: (f: ShopFilters) => void;
   renderProduct: (p: Product) => ReactNode;
   seriesSlug: string | null;
+  onProduct: (p: Product) => void;
 }) {
   const { products, status, retry } = useProducts(),
     { t, language, formatCurrency } = useI18n();
@@ -56,21 +60,33 @@ export function ShopCatalog({
     trigger.current?.focus();
   };
   const set = (value: Partial<ShopFilters>) => onFilters({ ...filters, ...value, page: 1 });
-  const reset = () => onFilters({ ...initialShopFilters });
-  const scope = seriesSlug ? products.filter((p) => p.api?.series?.slug === seriesSlug) : products;
-  const filtered = selectShopProducts(scope, filters, language, t),
+  const reset = () => {
+    onFilters({ ...initialShopFilters });
+    window.history.replaceState(window.history.state, "", "#shop");
+  };
+  const scope = useMemo(
+    () => (seriesSlug ? products.filter((p) => p.api?.series?.slug === seriesSlug) : products),
+    [products, seriesSlug],
+  );
+  const settledQuery = useSearchQuery(filters.query);
+  const resolvedFilters = { ...filters, query: settledQuery };
+  const suggestions = useMemo(
+    () => selectShopProducts(scope, { ...filters, query: "", sort: "default" }, language, t),
+    [scope, filters.category, filters.series, filters.min, filters.max, filters.stock, language],
+  );
+  const filtered = selectShopProducts(scope, resolvedFilters, language, t),
     last = Math.max(1, Math.ceil(filtered.length / SHOP_PAGE_SIZE)),
     page = Math.min(filters.page, last),
     shown = filtered.slice((page - 1) * SHOP_PAGE_SIZE, page * SHOP_PAGE_SIZE);
   const categoryBase = selectShopProducts(
     scope,
-    { ...filters, category: "all", sort: "default" },
+    { ...resolvedFilters, category: "all", sort: "default" },
     language,
     t,
   );
   const seriesBase = selectShopProducts(
     scope,
-    { ...filters, series: "all", sort: "default" },
+    { ...resolvedFilters, series: "all", sort: "default" },
     language,
     t,
   );
@@ -232,12 +248,22 @@ export function ShopCatalog({
       <div className="shop-toolbar">
         <label className="shop-search-label">
           <span>{t("Search")}</span>
-          <input
-            name="shop_search"
-            type="search"
+          <SmartSearchInput
             value={filters.query}
+            onChange={(q) => {
+              set({ query: q });
+              window.history.replaceState(
+                window.history.state,
+                "",
+                q ? "#shop?q=" + encodeURIComponent(q) : "#shop",
+              );
+            }}
+            products={suggestions}
+            status={status}
+            retry={retry}
             placeholder={t("shop.search")}
-            onChange={(e) => set({ query: e.target.value })}
+            onProduct={onProduct}
+            onAll={(q) => openSearchResults(q)}
           />
         </label>
         <span role="status" className="shop-result-count">
@@ -247,10 +273,11 @@ export function ShopCatalog({
               ? `${(page - 1) * SHOP_PAGE_SIZE + 1}–${Math.min(page * SHOP_PAGE_SIZE, filtered.length)} / ${filtered.length} ${t("shop.results")}`
               : `0 ${t("shop.results")}`}
         </span>
-        <label>
+        <label className="shop-sort-label">
           {t("products.sort")}
           <select
             name="shop_sort"
+            aria-label={t("products.sort")}
             value={filters.sort}
             onChange={(e) => set({ sort: e.target.value })}
           >
@@ -268,7 +295,8 @@ export function ShopCatalog({
           aria-expanded={open}
           onClick={() => setOpen(true)}
         >
-          {t("shop.filters")}
+          <span className="shop-filter-full">{t("shop.filters")}</span>
+          <span className="shop-filter-short">{t("shop.filterShort")}</span>
         </button>
       </div>
       <div className="shop-catalog-layout">
@@ -302,7 +330,9 @@ export function ShopCatalog({
               e.preventDefault();
               close();
             }}
-            onClose={() => setOpen(false)}
+            onClose={(e) => {
+              if (!e.currentTarget.open) setOpen(false);
+            }}
           >
             <button type="button" className="shop-filter-close" onClick={close}>
               {t("admin.close")}

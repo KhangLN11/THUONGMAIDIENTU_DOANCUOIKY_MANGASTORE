@@ -1,0 +1,134 @@
+.manga-search-suggestions {
+  position: fixed;
+  z-index: 1005;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #111;
+  background: #fff;
+  color: #111;
+  box-shadow: 4px 4px 0 #0002;
+  font: 400 13px/1.5 var(--body);
+}
+.manga-search-suggestions .manga-search-status {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  font-size: 12px;
+}
+.manga-search-suggestions a {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid #ddd;
+  min-height: 80px;
+}
+.manga-search-suggestions a[aria-selected="true"],
+.manga-search-suggestions a:hover {
+  background: #eee;
+}
+.manga-search-suggestions img {
+  width: 48px;
+  height: 64px;
+  object-fit: contain;
+}
+.manga-search-suggestions strong {
+  font: 700 20px/1.15 var(--display);
+  display: block;
+  overflow-wrap: anywhere;
+}
+.manga-search-suggestions small {
+  display: block;
+  font-size: 11px;
+  color: #555;
+  overflow-wrap: anywhere;
+}
+.manga-search-suggestions b {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.manga-search-suggestions button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  text-align: left;
+  font: 700 12px/1.5 var(--body);
+  background: #fff;
+  color: #111;
+  border: 0;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+.manga-search-suggestions .manga-search-all {
+  background: #111;
+  color: #fff;
+}
+.manga-search-suggestions :focus-visible {
+  outline: 2px solid #111;
+  outline-offset: -4px;
+}
+.manga-search-dialog {
+  position: fixed;
+  inset: 100px 0 auto;
+  margin: 0 auto;
+  padding: 24px;
+  max-width: 640px;
+  width: calc(100% - 32px);
+  border: 1px solid #111;
+  background: #fff;
+  color: #111;
+  overflow: visible;
+}
+.manga-search-dialog::backdrop {
+  background: #0005;
+}
+.manga-search-dialog form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 12px;
+}
+.manga-search-dialog label {
+  display: grid;
+  gap: 10px;
+  font: 700 12px/1.5 var(--body);
+}
+.manga-search-dialog input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid #111;
+  padding: 10px 12px;
+  font: 400 16px/1.5 var(--body);
+  background: #fff;
+  color: #111;
+}
+.manga-search-dialog form > button {
+  align-self: end;
+  min-width: 44px;
+  min-height: 48px;
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  font: 700 20px var(--body);
+}
+@media (max-width: 600px) {
+  .manga-search-dialog {
+    top: 85px;
+    padding: 16px;
+  }
+  .manga-search-suggestions a {
+    padding: 10px;
+    gap: 10px;
+  }
+}
+
+.manga-search-suggestions .manga-search-all:focus-visible {
+  outline-color: #fff;
+}
+.manga-search-dialog form > button:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 3px;
+}

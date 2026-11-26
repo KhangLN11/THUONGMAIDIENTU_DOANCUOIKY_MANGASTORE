@@ -148,6 +148,7 @@ const vi: Record<string, string> = {
 
   "BUY NOW": "MUA NGAY",
   "shop.filters": "BỘ LỌC SẢN PHẨM",
+  "shop.filterShort": "BỘ LỌC",
   "shop.search": "Tìm manga, bộ truyện, figure...",
   "shop.results": "kết quả",
   "shop.price": "Khoảng giá",
@@ -945,6 +946,7 @@ const en: Record<string, string> = {
 
   "BUY NOW": "BUY NOW",
   "shop.filters": "PRODUCT FILTERS",
+  "shop.filterShort": "FILTERS",
   "shop.search": "Search manga, series, figures...",
   "shop.results": "results",
   "shop.price": "Price range",

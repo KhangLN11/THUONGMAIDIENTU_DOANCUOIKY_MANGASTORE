@@ -160,3 +160,8 @@ Ba mục thông tin đã có toggle độc lập, VI/EN, keyboard/touch và nộ
 ## Giai đoạn 16B — About & Contact
 
 Trang `#about` có câu chuyện thương hiệu VI/EN, giá trị cho độc giả, Email/Điện thoại/Facebook và Google Maps đúng tọa độ được cung cấp. Footer Liên hệ mở `#about/contact`. Xem [báo cáo, cấu hình và kết quả kiểm thử](docs/PHASE16B_ABOUT_CONTACT.md).
+
+
+## Giai đoạn 16C — Mobile Shop
+
+Shop dưới600px có grid2 cột, Hero/toolbar gọn và hai nút mua hàng44px. Desktop/tablet giữ nguyên; [báo cáo và screenshot kiểm thử](docs/PHASE16C_MOBILE_SHOP.md).

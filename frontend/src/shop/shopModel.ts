@@ -1,3 +1,4 @@
+import { safeSearch, localizedSearchProducts } from "../search/searchEngine";
 import type { Product } from "../types/product";
 export type ShopFilters = {
   query: string;
@@ -50,22 +51,14 @@ export function selectShopProducts(
   translate: (value: string) => string,
 ) {
   if (!validPriceRange(f)) return [];
+  const hits = safeSearch(localizedSearchProducts(products, translate), f.query).hits;
+  const ranks = new Map(hits.map((h) => [h.product.id, h.score]));
   const query = foldShop(f.query),
     min = f.min === "" ? 0 : Number(f.min),
     max = f.max === "" ? Infinity : Number(f.max);
   const result = products.filter((p) => {
-    const search = [
-      p.api?.name_vi,
-      p.api?.name_en,
-      p.api?.sku,
-      p.name,
-      p.source ? null : translate(p.name),
-      p.series,
-    ]
-      .filter(Boolean)
-      .join(" ");
     return (
-      (!query || foldShop(search).includes(query)) &&
+      (!query || ranks.has(p.id)) &&
       (f.category === "all" || categoryOf(p) === f.category) &&
       (f.series === "all" || seriesOf(p) === f.series) &&
       p.price >= min &&
@@ -74,7 +67,10 @@ export function selectShopProducts(
         (p.source === "api" && (f.stock === "in" ? !!p.stockQuantity : p.stockQuantity === 0)))
     );
   });
-  if (f.sort === "default") return result;
+  if (f.sort === "default")
+    return query
+      ? result.sort((a, b) => (ranks.get(b.id) ?? 0) - (ranks.get(a.id) ?? 0) || a.id - b.id)
+      : result;
   return result.sort((a, b) => {
     let comparison = 0;
     if (f.sort === "newest") comparison = b.id - a.id;

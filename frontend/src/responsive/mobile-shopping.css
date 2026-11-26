@@ -1,0 +1,194 @@
+/* Shopping surfaces only. ShopCatalog 16C is intentionally excluded. */
+@media (max-width: 600px) {
+  .app .product-page .crumbs {
+    padding: 18px 14px;
+    font-size: 10px;
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+    overflow-wrap: anywhere;
+  }
+  .app .product-page .product-detail {
+    padding: 20px 14px 44px;
+    gap: 24px;
+    min-width: 0;
+  }
+  .app .product-page .gallery {
+    min-width: 0;
+    gap: 12px;
+  }
+  .app .product-page .main-image {
+    height: clamp(300px, 100vw, 420px);
+  }
+  .app .product-page .thumbs {
+    max-width: 100%;
+    min-width: 0;
+    gap: 8px;
+    padding-bottom: 6px;
+    overscroll-behavior-x: contain;
+  }
+  .app .product-page .thumbs button {
+    width: 64px;
+    height: 80px;
+    flex: 0 0 64px;
+    margin-bottom: 0;
+  }
+  .app .product-page .product-info {
+    min-width: 0;
+  }
+  .app .product-page .product-info h1 {
+    font-size: clamp(36px, 10vw, 48px);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+  }
+  .app .product-page .product-info > h2 {
+    font-size: 32px;
+    overflow-wrap: anywhere;
+  }
+  .app .product-page .product-info > p {
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .app .product-page .stock {
+    font-size: 11px;
+  }
+  .app .product-page .purchase {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .app .product-page .qty {
+    width: 144px;
+    min-height: 48px;
+  }
+  .app .product-page .qty button {
+    min-width: 44px;
+    min-height: 48px;
+  }
+  .app .product-page .purchase .ink-btn {
+    width: 100%;
+    min-height: 48px;
+    white-space: normal;
+  }
+  .app .product-page .buy {
+    min-height: 48px;
+  }
+  .app .product-page .accordions button {
+    min-height: 48px;
+    font-size: 10px;
+    line-height: 1.5;
+    gap: 12px;
+  }
+  .app .product-page .related {
+    padding: 20px 14px 44px;
+  }
+  .app .product-page .related .section-title {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .app .product-page .related .section-title h2 {
+    font-size: clamp(40px, 12vw, 54px);
+    line-height: 0.95;
+  }
+  .app :is(.cart-page, .wishlist-page) .page-hero {
+    padding: 30px 14px;
+  }
+  .app :is(.cart-page, .wishlist-page) .page-hero h1 {
+    font-size: clamp(48px, 14vw, 64px);
+    line-height: 1.04;
+    margin-top: 22px;
+    overflow-wrap: anywhere;
+  }
+  .app :is(.cart-page, .wishlist-page) .page-hero b {
+    font-size: 42px;
+    right: 14px;
+    bottom: 12px;
+  }
+  .app .cart-page .cart-layout {
+    padding: 24px 14px 44px;
+    gap: 24px;
+  }
+  .app .cart-page .cart-row {
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 20px 0;
+  }
+  .app .cart-page .cart-row img {
+    width: 70px;
+    height: 100px;
+    object-fit: contain;
+  }
+  .app .cart-page .cart-row > div {
+    min-width: 0;
+  }
+  .app .cart-page .cart-row h3 {
+    font-size: 23px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .app .cart-page .cart-row small {
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    overflow-wrap: anywhere;
+  }
+  .app .cart-page .cart-row > div > button {
+    min-height: 44px;
+    font-size: 11px;
+  }
+  .app .cart-page .cart-row .qty {
+    grid-column: 1/-1;
+    grid-row: 2;
+    width: 144px;
+    justify-self: start;
+  }
+  .app .cart-page .cart-row .qty button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .app .cart-page .cart-row > strong {
+    grid-column: 1/-1;
+    grid-row: 2;
+    justify-self: end;
+    align-self: center;
+    overflow-wrap: anywhere;
+    max-width: calc(100% - 156px);
+  }
+  .app .cart-page .summary {
+    padding: 24px 16px;
+    min-width: 0;
+  }
+  .app .cart-page .summary > div {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .app .cart-page .summary b {
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
+  .app .cart-page .summary .ink-btn {
+    min-height: 48px;
+    width: 100%;
+  }
+  .app .wishlist-page .shop-tools {
+    height: auto;
+    padding: 16px 14px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .app .wishlist-page .shop-tools input {
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+    width: 100%;
+  }
+  .app .wishlist-page .shop-tools select {
+    min-height: 44px;
+    max-width: 100%;
+  }
+  .app .wishlist-page .shop-layout {
+    padding: 24px 14px 44px;
+  }
+  .app .wishlist-page .shop-layout aside button {
+    min-height: 44px;
+  }
+}

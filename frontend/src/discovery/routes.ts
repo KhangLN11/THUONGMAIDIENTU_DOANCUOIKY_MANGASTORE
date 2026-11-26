@@ -1,10 +1,9 @@
-export function discoveryRoute(
-  hash: string,
-): {
+export function discoveryRoute(hash: string): {
   page: "home" | "shop" | "about" | "series" | "collections" | "product";
   slug: string | null;
   id: number | null;
 } | null {
+  if (/^#shop\?[^#]*$/.test(hash)) return { page: "shop", slug: null, id: null };
   if (hash === "#about/contact") return { page: "about", slug: null, id: null };
   if (["#home", "#shop", "#about", "#manifesto"].includes(hash))
     return {

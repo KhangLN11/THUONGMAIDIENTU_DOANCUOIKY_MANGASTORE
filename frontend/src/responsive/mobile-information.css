@@ -1,0 +1,103 @@
+/* New utility links do not participate in the established closed/desktop Navbar. */
+.site-header .mobile-nav-tools {
+  display: none;
+}
+@media (max-width: 760px) {
+  .app .site-header nav.open {
+    height: calc(100dvh - 70px);
+    max-height: calc(100dvh - 70px);
+    padding: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .app .site-header nav.open > button {
+    flex-shrink: 0;
+  }
+  .app .site-header .mobile-nav-tools {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 20px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+  .app .site-header .mobile-nav-tools a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 64px;
+    padding: 10px 4px;
+    border: 1px solid #111;
+    font: 600 12px/1.4 var(--body);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .app .site-header .mobile-nav-tools a:focus-visible {
+    outline: 2px solid #111;
+    outline-offset: 3px;
+  }
+}
+@media (max-width: 600px) {
+  /* Keep Shop 16C's complete closed-page presentation, including its footer. */
+  .app:not(:has(.shop-catalog)) > footer .footer-main h4 {
+    font-size: 11px;
+  }
+  .app:not(:has(.shop-catalog)) > footer .footer-main > div > button {
+    min-height: 44px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .app:not(:has(.shop-catalog)) > footer .newsletter input {
+    font-size: 16px;
+    min-height: 48px;
+    min-width: 0;
+  }
+  .app:not(:has(.shop-catalog)) > footer .newsletter label > button {
+    min-width: 44px;
+    min-height: 48px;
+  }
+  .app:not(:has(.shop-catalog)) > footer .footer-bottom {
+    font-size: 10px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .admin-shell .admin-main .admin-button,
+  .admin-shell .admin-sidebar .admin-button {
+    min-height: 44px;
+  }
+  .admin-shell .admin-main label {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .admin-shell .admin-main :is(input, select, textarea) {
+    font-size: 16px;
+  }
+  .admin-shell .admin-main input[type="file"] {
+    font-size: 12px;
+  }
+  .admin-shell .admin-main .admin-panel {
+    min-width: 0;
+  }
+  .admin-shell .admin-main .admin-table-wrap {
+    overscroll-behavior-x: contain;
+  }
+  .admin-shell .admin-main .admin-pagination {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .admin-shell .admin-main .admin-product-images button {
+    min-height: 44px;
+  }
+  .admin-shell .admin-series-dialog {
+    padding: 16px;
+    overscroll-behavior: contain;
+  }
+  .admin-shell .admin-series-dialog .admin-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

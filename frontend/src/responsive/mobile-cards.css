@@ -1,0 +1,231 @@
+/* Explicit opt-in surfaces only: never Shop 16C or desktop/tablet. */
+@media (max-width: 600px) {
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 10px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-img {
+    height: calc(clamp(180px, 52vw, 230px) + 96px);
+    flex-shrink: 0;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-img
+    > img {
+    height: calc(100% - 96px);
+    object-fit: contain;
+    object-position: center;
+    padding: 10px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .shop-image-open {
+    height: calc(100% - 96px);
+    bottom: 96px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .quick-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    height: 96px;
+    transform: none;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .quick-actions
+    button {
+    height: 48px;
+    min-height: 48px;
+    font: 700 11px/1.4 var(--body);
+    padding: 8px 4px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .wish {
+    width: 44px;
+    height: 44px;
+    right: 6px;
+    top: 6px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-meta {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 12px 0 0;
+    min-width: 0;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-meta
+    p {
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    overflow-wrap: anywhere;
+    min-height: 3em !important;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-meta
+    h3 {
+    font-size: 20px;
+    line-height: 1.15;
+    display: block !important;
+    overflow: visible !important;
+    margin-bottom: 10px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .shop-product-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 3.45em;
+    max-height: 3.45em;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-meta
+    > div {
+    margin-top: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .product-meta
+    small {
+    font-size: 10px;
+    letter-spacing: 0;
+    line-height: 1.5;
+  }
+  .app
+    :is(
+      .home-page,
+      .series-page,
+      .discovery-collections-page,
+      .wishlist-page,
+      .product-page .related
+    )
+    .product-card
+    .badge {
+    max-width: calc(100% - 62px);
+    left: 6px;
+    top: 6px;
+    padding: 5px;
+    overflow-wrap: anywhere;
+  }
+}
